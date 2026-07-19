@@ -4,7 +4,11 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { TrendingUp, Users, FolderOpen, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { TrendingUp, Users, FolderOpen, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { useDashboardOverview, useRecentActivities, useUpcomingEvents } from '@/hooks/useDashboard'
+import { DashboardCharts } from '@/components/dashboard/dashboard-charts'
+import { DashboardWidgets } from '@/components/calendar/DashboardWidgets'
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,9 +30,36 @@ const itemVariants = {
   },
 }
 
-const hoverScale = { whileHover: { scale: 1.02, y: -2 }, transition: { duration: 0.2 } }
+const getEventIcon = (type: string) => {
+  switch (type) {
+    case 'meeting': return Clock
+    case 'review': return AlertCircle
+    default: return CheckCircle2
+  }
+}
+
+const getActivityIcon = (type: string) => {
+  switch (type) {
+    case 'project': return FolderOpen
+    case 'employee': return Users
+    default: return CheckCircle2
+  }
+}
 
 export default function DashboardPage() {
+  const { data: overview, isLoading: overviewLoading, isError: overviewError, refetch } = useDashboardOverview()
+  const { data: activities = [], isLoading: activitiesLoading } = useRecentActivities()
+  const { data: events = [], isLoading: eventsLoading } = useUpcomingEvents()
+
+  const formatKpiValue = (key: string, val: number) => {
+    if (key === 'revenue') {
+      return `$${val.toLocaleString()}`
+    }
+    return val.toLocaleString()
+  }
+
+  const isLoading = overviewLoading || activitiesLoading || eventsLoading
+
   return (
     <AppLayout>
       <motion.div
@@ -38,120 +69,185 @@ export default function DashboardPage() {
         className="space-y-8"
       >
         {/* Header */}
-        <motion.div variants={itemVariants}>
-          <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-2 text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening across your business.</p>
+        <motion.div variants={itemVariants} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+            <p className="mt-2 text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening across your business.</p>
+          </div>
+          {overviewError && (
+            <button
+              onClick={() => refetch()}
+              className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20 transition-all"
+            >
+              Retry Connection
+            </button>
+          )}
         </motion.div>
 
-        {/* KPI Cards */}
-        <motion.div
-          variants={containerVariants}
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {[
-            { icon: Users, label: 'Active Employees', value: '248', trend: '+12%' },
-            { icon: FolderOpen, label: 'Projects', value: '34', trend: '+5' },
-            { icon: CheckCircle2, label: 'Completed Tasks', value: '1,204', trend: '+23%' },
-            { icon: TrendingUp, label: 'Revenue', value: '$52.4K', trend: '+8.2%' },
-          ].map((kpi, idx) => (
-            <motion.div key={idx} variants={itemVariants} whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
-              <Card className="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-accent/30">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">{kpi.label}</p>
-                      <p className="mt-2 text-3xl font-bold">{kpi.value}</p>
-                      <Badge className="mt-3 bg-emerald-500/20 text-emerald-300 border-0">
-                        {kpi.trend}
-                      </Badge>
-                    </div>
-                    <div className="rounded-lg bg-primary/20 p-3">
-                      <kpi.icon size={24} className="text-accent" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Loading Skeletons */}
+        {isLoading ? (
+          <div className="space-y-8">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 rounded-xl bg-card/40 animate-pulse border border-border/40" />
+              ))}
+            </div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2 h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40" />
+              <div className="h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40" />
+            </div>
+          </div>
+        ) : overviewError ? (
+          <div className="flex h-96 flex-col items-center justify-center gap-4 rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
+            <AlertCircle size={48} className="text-destructive animate-bounce" />
+            <h3 className="text-xl font-bold text-foreground">API Connection Failure</h3>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Unable to connect to FastAPI workstation to fetch overview telemetry. Ensure the backend instance is running and fully initialized.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="rounded-xl bg-primary/20 px-6 py-2 font-semibold text-accent hover:bg-primary/30 border border-accent/20 transition-all"
+            >
+              Refresh Workstation
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* KPI Cards */}
+            <motion.div
+              variants={containerVariants}
+              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              {overview?.metrics &&
+                Object.entries(overview.metrics).map(([key, metric]: [string, any]) => {
+                  const Icon = key === 'active_employees' ? Users : key === 'active_projects' ? FolderOpen : key === 'completed_tasks' ? CheckCircle2 : TrendingUp
+                  const isUp = metric.trend === 'up'
+                  return (
+                    <motion.div
+                      key={key}
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Card className="overflow-hidden border-border/40 bg-card/30 backdrop-blur-md transition-all duration-200 hover:shadow-lg hover:border-accent/30">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
+                              <p className="text-3xl font-bold">{formatKpiValue(key, metric.value)}</p>
+                              <div className="pt-2">
+                                <Badge
+                                  className={`border-0 flex items-center gap-1 w-fit ${
+                                    isUp
+                                      ? 'bg-emerald-500/10 text-emerald-400'
+                                      : 'bg-destructive/10 text-destructive'
+                                  }`}
+                                >
+                                  {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                  <span>{isUp ? '+' : ''}{metric.change}%</span>
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-primary/20 p-3">
+                              <Icon size={24} className="text-accent" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
             </motion.div>
-          ))}
-        </motion.div>
 
-        {/* Content Grid */}
-        <motion.div
-          variants={containerVariants}
-          className="grid gap-6 lg:grid-cols-3"
-        >
-          {/* Recent Activity */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest updates from your team</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { action: 'Project created', item: 'Q3 Marketing Campaign', time: '2 hours ago' },
-                    { action: 'Task completed', item: 'Design new landing page', time: '5 hours ago' },
-                    { action: 'Document shared', item: 'Q3 Strategy Document', time: '1 day ago' },
-                  ].map((activity, idx) => (
-                    <div key={idx} className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/40 p-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
-                        <CheckCircle2 size={20} className="text-accent" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{activity.action}</p>
-                        <p className="text-sm text-muted-foreground">{activity.item}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{activity.time}</span>
+            {/* Calendar & Meeting Management Quick telemetry */}
+            <motion.div variants={itemVariants}>
+              <DashboardWidgets />
+            </motion.div>
+
+            {/* Charts Section */}
+            <motion.div variants={itemVariants}>
+              <DashboardCharts data={overview.charts} />
+            </motion.div>
+
+            {/* Content Grid */}
+            <motion.div
+              variants={containerVariants}
+              className="grid gap-6 lg:grid-cols-3"
+            >
+              {/* Recent Activity */}
+              <motion.div variants={itemVariants} className="lg:col-span-2">
+                <Card className="border-border/40 bg-card/30 backdrop-blur-md">
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>Latest updates from your team</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {activities.map((activity) => {
+                        const Icon = getActivityIcon(activity.type)
+                        return (
+                          <div
+                            key={activity.id}
+                            className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/40 p-4 transition-all hover:bg-card/60"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+                              <Icon size={20} className="text-accent" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground truncate">{activity.title}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{activity.description}</p>
+                              <p className="text-xs text-muted-foreground/60 mt-1">By {activity.user}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{activity.timestamp}</span>
+                          </div>
+                        )
+                      })}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-          {/* Upcoming Deadlines */}
-          <motion.div variants={itemVariants}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming</CardTitle>
-                <CardDescription>Next 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { title: 'Review designs', date: 'Tomorrow', icon: Clock },
-                    { title: 'Client meeting', date: 'Wed, 12 Jun', icon: AlertCircle },
-                    { title: 'Submit proposal', date: 'Thu, 13 Jun', icon: CheckCircle2 },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/40 p-3">
-                      <item.icon size={18} className="text-accent" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">{item.date}</p>
-                      </div>
+              {/* Upcoming Events */}
+              <motion.div variants={itemVariants}>
+                <Card className="border-border/40 bg-card/30 backdrop-blur-md">
+                  <CardHeader>
+                    <CardTitle>Upcoming Events</CardTitle>
+                    <CardDescription>Next 7 days timeline</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {events.map((event) => {
+                        const Icon = getEventIcon(event.type)
+                        return (
+                          <div
+                            key={event.id}
+                            className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/40 p-3 transition-all hover:bg-card/60"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/25">
+                              <Icon size={16} className="text-accent" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                Organizer: {event.organizer}
+                              </p>
+                            </div>
+                            <Badge className="bg-primary/20 text-accent border-0 text-xs font-semibold">
+                              {new Date(event.date).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </Badge>
+                          </div>
+                        )
+                      })}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Analytics Preview */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Overview</CardTitle>
-              <CardDescription>Monthly trends</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 rounded-lg border border-border/40 bg-card/40 flex items-center justify-center text-muted-foreground">
-                Charts component will be rendered here
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
       </motion.div>
     </AppLayout>
   )

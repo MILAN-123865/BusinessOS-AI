@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, Menu, X, Settings, Bell, User, LogOut, Grid3x3, Users, FolderOpen, Building2, FileText, BarChart3, Search } from 'lucide-react'
+import { ChevronRight, Menu, X, Settings, Bell, User, LogOut, Grid3x3, Users, FolderOpen, Building2, FileText, BarChart3, Search, Shield, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useAuthStore } from '@/store/authStore'
+import { useLogout } from '@/hooks/useAuth'
 
 interface NavItem {
   icon: React.ReactNode
@@ -22,6 +24,9 @@ const navSections: NavSection[] = [
     title: 'Workspace',
     items: [
       { icon: <Grid3x3 size={20} />, label: 'Dashboard', href: '/dashboard' },
+      { icon: <Calendar size={20} />, label: 'Calendar & Meetings', href: '/calendar' },
+      { icon: <Building2 size={20} />, label: 'Organization', href: '/organization' },
+      { icon: <Shield size={20} />, label: 'Roles & RBAC', href: '/roles' },
       { icon: <Users size={20} />, label: 'Employees', href: '/employees' },
       { icon: <FolderOpen size={20} />, label: 'Projects', href: '/projects' },
       { icon: <Building2 size={20} />, label: 'Clients', href: '/clients' },
@@ -39,6 +44,8 @@ const navSections: NavSection[] = [
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const [isPinned, setIsPinned] = useState(false)
+  const user = useAuthStore((state) => state.user)
+  const logout = useLogout()
 
   return (
     <>
@@ -149,23 +156,44 @@ export function Sidebar() {
               <Bell size={20} className="text-muted-foreground transition-colors group-hover:text-accent" />
               <motion.span animate={{ opacity: isOpen ? 1 : 0 }}>Notifications</motion.span>
             </button>
-            <button className="group relative mx-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent/10">
+            <Link
+              href="/profile"
+              className="group relative mx-2 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent/10"
+            >
               <Settings size={20} className="text-muted-foreground transition-colors group-hover:text-accent" />
               <motion.span animate={{ opacity: isOpen ? 1 : 0 }}>Settings</motion.span>
-            </button>
+            </Link>
           </div>
 
           {/* User Profile */}
           <div className="mt-4 border-t border-border/40 pt-3">
-            <button className="group relative mx-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent/10">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/30">
-                <User size={16} className="text-accent" />
-              </div>
-              <motion.div animate={{ opacity: isOpen ? 1 : 0 }} className="flex-1 overflow-hidden text-left">
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-muted-foreground">admin@businessos.ai</p>
-              </motion.div>
-            </button>
+            <div className="flex items-center justify-between px-2">
+              <Link
+                href="/profile"
+                className="flex items-center gap-3 overflow-hidden group hover:opacity-80 transition-all"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/30 group-hover:bg-primary/45 transition-colors">
+                  <User size={16} className="text-accent" />
+                </div>
+                {isOpen && user && (
+                  <div className="flex-1 overflow-hidden text-left">
+                    <p className="text-sm font-medium truncate group-hover:text-accent transition-colors">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                )}
+              </Link>
+              {isOpen && (
+                <button
+                  onClick={logout}
+                  title="Logout"
+                  className="rounded-lg p-1.5 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <LogOut size={16} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </motion.aside>

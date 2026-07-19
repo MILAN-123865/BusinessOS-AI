@@ -1,18 +1,20 @@
-from typing import List, Callable
+from typing import Callable, List
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
 from pydantic import ValidationError
 
-from app.core.config import settings
-from app.schemas.auth import TokenPayload  # Assumed validation schema for JWT payload claims
+from app.config.settings import settings
+from app.core.security import decode_token, InvalidTokenError
+from app.schemas.auth import TokenPayload
 from app.models.user import User
 from app.services.user_service import UserService
-from app.api.user import get_user_service
+from app.dependencies.services import get_user_service
 
-# Declare OAuth2 scheme token URL mapping to match enterprise deployment targets
+# Declare OAuth2 scheme token URL mapping to match enterprise deployment targets.
+# NOTE: settings.py exposes API_V1_PREFIX — there is no API_V1_STR attribute.
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_PREFIX}/auth/login"
 )
 
 
@@ -29,17 +31,13 @@ async def get_current_user(
         detail="Could not validate credentials. Access token is missing, expired, or malformed.",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        payload = jwt.decode(
-            token, 
-            settings.JWT_SECRET_KEY, 
-            algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = decode_token(token)
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
             raise credentials_exception
-    except (JWTError, ValidationError):
+    except (InvalidTokenError, ValidationError):
         raise credentials_exception
 
     # get_with_auth_context eager loads user roles and sub-permissions inside the repository mapping
@@ -49,13 +47,13 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User account associated with this token does not exist."
         )
-        
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account has been disabled by administration parameters."
         )
-        
+
     return user
 
 
@@ -77,15 +75,15 @@ class PermissionChecker:
     def __call__(self, current_user: User = Depends(get_current_active_user)) -> User:
         # Extract flat deduped permission codenames across all user-assigned roles
         user_permissions = {
-            perm.codename 
-            for role in current_user.roles 
-            for perm in role.permissions 
+            perm.codename
+            for role in current_user.roles
+            for perm in role.permissions
             if not role.is_deleted and not perm.is_deleted
         }
 
         # Validate if the user claims contain all strictly mandatory route execution tokens
         missing_permissions = [perm for perm in self.required_permissions if perm not in user_permissions]
-        
+
         if missing_permissions:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -94,7 +92,7 @@ class PermissionChecker:
                     "missing_permissions": missing_permissions
                 }
             )
-            
+
         return current_user
 
 

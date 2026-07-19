@@ -1,7 +1,10 @@
-import { Analytics } from '@vercel/analytics/next'
+import { Analytics } from '@vercel/analytics/react'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { QueryProvider } from '@/components/providers/query-provider'
+import { AuthGuard } from '@/components/providers/auth-guard'
+import { PermissionProvider } from '@/components/providers/permission-provider'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -35,7 +38,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
       <body className={`${inter.variable} font-sans bg-background text-foreground antialiased`}>
-        {children}
+        <QueryProvider>
+          <PermissionProvider>
+            <AuthGuard>
+              {children}
+            </AuthGuard>
+          </PermissionProvider>
+        </QueryProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

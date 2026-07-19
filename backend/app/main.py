@@ -1,3 +1,4 @@
+from app.api.auth import router as auth_router
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
@@ -7,10 +8,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.config import settings
-from app.config.database import init_database, close_database_connections
+from app.config.settings import settings
+from app.config.database import (
+    init_database,
+    close_database_connections,
+)
 from app.middleware.auth import EnterpriseAuthContextMiddleware
 from app.api.user import router as user_router
+from app.api.dashboard import router as dashboard_router
+from app.api.organization import router as organization_router
+from app.api.department import router as department_router
+from app.api.role import router as role_router
+from app.api.client import router as client_router
+from app.api.project import router as project_router
+from app.api.task import router as task_router
+from app.api.calendar import router as calendar_router
+from app.api.meeting import router as meeting_router
 
 # Setup structured logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -22,15 +35,11 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Handles application state transitions. Initializes backing storage pools
-    cleanly before the socket binds, and frees them during zero-downtime recycling.
-    """
     logger.info("Initializing BusinessOS AI Enterprise Engine Lifespan...")
     await init_database()
-    
-    yield  # Application processes requests here
-    
+
+    yield
+
     logger.info("De-provisioning BusinessOS AI Enterprise Engine Lifespan...")
     await close_database_connections()
 
@@ -39,10 +48,10 @@ async def lifespan(app: FastAPI):
 # FASTAPI INSTANTIATION
 # ==============================================================================
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=settings.APP_NAME,
     description="Production-grade AI-powered Enterprise Business Operating System.",
     version="1.0.0",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
@@ -53,10 +62,13 @@ app = FastAPI(
 # GLOBAL MIDDLEWARE CONFIGURATIONS
 # ==============================================================================
 # 1. Standard Cross-Origin Resource Sharing Rules
+# NOTE: settings.py exposes CORS_ALLOWED_ORIGINS / CORS_ALLOW_CREDENTIALS —
+# the previous `BACKEND_CORS_ORIGINS` attribute does not exist and raised
+# AttributeError at import time.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-    allow_credentials=True,
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -116,8 +128,60 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
 # ==============================================================================
 # ROUTER BINDINGS
 # ==============================================================================
-app.include_router(user_router, prefix=settings.API_V1_STR)
+app.include_router(
+    auth_router,
+    prefix=settings.API_V1_PREFIX
+)
 
+app.include_router(
+    user_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    dashboard_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    organization_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    department_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    role_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    client_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    project_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    task_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    calendar_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    meeting_router,
+    prefix=settings.API_V1_PREFIX
+)
 
 @app.get("/health", tags=["System"], status_code=status.HTTP_200_OK)
 async def health_check() -> dict:

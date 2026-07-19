@@ -146,6 +146,13 @@ class UserEnvelope(BaseModel):
     errors: Optional[dict] = None
 
 
+class UserWithRolesEnvelope(BaseModel):
+    success: bool = True
+    message: str = "User privileges retrieved successfully."
+    data: UserWithRolesResponse
+    errors: Optional[dict] = None
+
+
 class UserListEnvelope(BaseModel):
     success: bool = True
     message: str = "Users retrieved successfully."

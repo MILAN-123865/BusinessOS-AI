@@ -63,7 +63,7 @@ def _build_engine() -> AsyncEngine:
         appropriate for long-running API server processes.
     """
     engine_kwargs: dict = {
-        "url": str(settings.POSTGRES_URL),
+        "url": str(settings.sqlalchemy_database_url),
         # Recycle connections before typical firewall/DB idle-timeout
         # windows close them silently underneath us.
         "pool_recycle": 1800,
@@ -80,8 +80,8 @@ def _build_engine() -> AsyncEngine:
     if settings.ENVIRONMENT == "test":
         engine_kwargs["poolclass"] = NullPool
     else:
-        engine_kwargs["pool_size"] = settings.POSTGRES_POOL_SIZE
-        engine_kwargs["max_overflow"] = settings.POSTGRES_MAX_OVERFLOW
+        engine_kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
+        engine_kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
 
     return create_async_engine(**engine_kwargs)
 
@@ -135,7 +135,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         await session.close()
 
 
-async def init_db_connection() -> None:
+async def init_database() -> None:
     """
     Verifies database connectivity at application startup.
 
@@ -152,7 +152,7 @@ async def init_db_connection() -> None:
     logger.info("Database connection established successfully.")
 
 
-async def close_db_connection() -> None:
+async def close_database_connections() -> None:
     """
     Disposes of the engine's connection pool at application shutdown.
 

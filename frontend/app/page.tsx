@@ -1,12 +1,14 @@
 'use client'
 
-import { redirect } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function Page() {
+  const router = useRouter()
+
   useEffect(() => {
-    redirect('/dashboard')
-  }, [])
+    router.replace('/dashboard')
+  }, [router])
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-background">

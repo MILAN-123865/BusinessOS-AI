@@ -6,9 +6,8 @@ This module has ZERO internal dependencies on the rest of the application —
 every other module in the codebase may depend on this one, never the reverse.
 
 Usage:
-    from app.config.settings import get_settings
+    from app.config.settings import settings
 
-    settings = get_settings()
     settings.DATABASE_URL
 """
 
@@ -50,6 +49,11 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "AI-powered Enterprise Business Operating System"
     ENVIRONMENT: Literal["local", "development", "staging", "production"] = "local"
     DEBUG: bool = False
+
+    # NOTE: this is the single source of truth for the versioned API prefix.
+    # Every other module (middleware, dependencies, routers) must import
+    # `settings.API_V1_PREFIX` — do NOT reference a separate `API_V1_STR`,
+    # that name does not exist here and will raise AttributeError.
     API_V1_PREFIX: str = "/api/v1"
 
     # -------------------------------------------------------------------
@@ -62,6 +66,8 @@ class Settings(BaseSettings):
     # Security / JWT
     # -------------------------------------------------------------------
     # Must be a high-entropy secret in production (min 32 bytes / 256 bits).
+    # NOTE: this is the single source of truth for the signing secret.
+    # Other modules must reference `settings.JWT_SECRET_KEY`, not `SECRET_KEY`.
     JWT_SECRET_KEY: str = Field(..., min_length=32)
     JWT_REFRESH_SECRET_KEY: str = Field(..., min_length=32)
     JWT_ALGORITHM: str = "HS256"
@@ -99,6 +105,9 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------
     # CORS
     # -------------------------------------------------------------------
+    # NOTE: this is the single source of truth for CORS origins.
+    # main.py must reference `settings.CORS_ALLOWED_ORIGINS`, not
+    # `BACKEND_CORS_ORIGINS` (that field does not exist here).
     CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list)
     CORS_ALLOW_CREDENTIALS: bool = True
 
@@ -164,9 +173,8 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """
     Return a cached Settings singleton.
-
-    lru_cache ensures the .env file and environment are parsed only once
-    per process, and the same instance is reused across the app via
-    FastAPI dependency injection.
     """
     return Settings()
+
+
+settings = get_settings()

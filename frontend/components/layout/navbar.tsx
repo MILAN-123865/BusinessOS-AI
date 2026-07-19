@@ -3,6 +3,7 @@
 import { Search, CommandIcon, Plus, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import Link from 'next/link'
 import { NotificationCenter } from '@/components/ui/notification-center'
 
 export function Navbar() {
@@ -36,7 +37,12 @@ export function Navbar() {
             placeholder="Search... (Ctrl+K)"
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
-            className="w-full bg-transparent text-sm placeholder-muted-foreground outline-none"
+            onClick={() => {
+              // @ts-ignore
+              if (window.openCommandPalette) window.openCommandPalette()
+            }}
+            readOnly
+            className="w-full bg-transparent text-sm placeholder-muted-foreground outline-none cursor-pointer"
           />
         </motion.div>
 
@@ -46,6 +52,10 @@ export function Navbar() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              // @ts-ignore
+              if (window.openCommandPalette) window.openCommandPalette()
+            }}
             className="hidden items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-3 py-2 text-sm text-muted-foreground hover:text-foreground md:flex"
           >
             <CommandIcon size={16} />
@@ -65,13 +75,13 @@ export function Navbar() {
           <NotificationCenter />
 
           {/* User Menu */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/30 text-accent hover:bg-primary/40"
+          <Link
+            href="/profile"
+            title="My Profile"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/30 text-accent hover:bg-primary/40 transition-all hover:scale-105"
           >
             <User size={20} />
-          </motion.button>
+          </Link>
         </div>
       </div>
     </motion.nav>

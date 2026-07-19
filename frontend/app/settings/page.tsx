@@ -1,54 +1,33 @@
 'use client'
 
-import { AppLayout } from '@/components/layout/app-layout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { motion } from 'framer-motion'
-import { Save, Bell, Lock, Palette, User } from 'lucide-react'
 import { useState } from 'react'
-
-const settingsGroups = [
-  {
-    icon: User,
-    title: 'Profile',
-    description: 'Manage your personal information',
-    href: '#profile',
-  },
-  {
-    icon: Palette,
-    title: 'Appearance',
-    description: 'Customize the look and feel',
-    href: '#appearance',
-  },
-  {
-    icon: Bell,
-    title: 'Notifications',
-    description: 'Control how you get notified',
-    href: '#notifications',
-  },
-  {
-    icon: Lock,
-    title: 'Security',
-    description: 'Manage passwords and authentication',
-    href: '#security',
-  },
-]
+import { AppLayout } from '@/components/layout/app-layout'
+import { motion } from 'framer-motion'
+import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/useSettings'
+import { Settings, Shield, Bell, Zap, Save, Loader2 } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 }
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile')
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'features'>('general')
+  
+  const { data: settings, isLoading } = useSystemSettings()
+  const updateSettingsMutation = useUpdateSystemSettings()
+
+  const handleSave = (sectionData: any) => {
+    updateSettingsMutation.mutate({
+      [activeTab]: sectionData
+    })
+  }
 
   return (
     <AppLayout>
@@ -56,175 +35,242 @@ export default function SettingsPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="space-y-8 max-w-6xl"
+        className="mx-auto max-w-5xl space-y-6"
       >
-        {/* Header */}
         <motion.div variants={itemVariants}>
-          <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
-          <p className="mt-2 text-muted-foreground">Manage your account and preferences</p>
+          <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your enterprise platform configurations and preferences.</p>
         </motion.div>
 
-        {/* Settings Layout */}
-        <div className="grid gap-6 lg:grid-cols-4">
-          {/* Sidebar */}
-          <motion.div variants={itemVariants} className="lg:col-span-1">
-            <Card className="sticky top-20">
-              <CardContent className="p-0">
-                <div className="space-y-1">
-                  {settingsGroups.map((group) => (
-                    <motion.button
-                      key={group.title}
-                      whileHover={{ x: 4 }}
-                      onClick={() => setActiveTab(group.title.toLowerCase())}
-                      className={`group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                        activeTab === group.title.toLowerCase()
-                          ? 'bg-primary/10 text-accent'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <group.icon size={20} />
-                      <span className="font-medium">{group.title}</span>
-                    </motion.button>
-                  ))}
+        {isLoading ? (
+          <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
+            <Loader2 size={32} className="animate-spin text-accent mb-4" />
+            <p>Loading settings...</p>
+          </div>
+        ) : !settings ? (
+          <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 text-destructive">
+            <p className="font-semibold">Failed to load settings.</p>
+          </div>
+        ) : (
+          <motion.div variants={itemVariants} className="flex flex-col gap-6 lg:flex-row">
+            {/* Sidebar */}
+            <aside className="w-full lg:w-64 shrink-0">
+              <nav className="flex space-x-2 overflow-x-auto pb-4 lg:flex-col lg:space-x-0 lg:space-y-1 lg:pb-0">
+                <button
+                  onClick={() => setActiveTab('general')}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'general' ? 'bg-primary/20 text-accent' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+                  }`}
+                >
+                  <Settings size={18} /> General
+                </button>
+                <button
+                  onClick={() => setActiveTab('security')}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'security' ? 'bg-primary/20 text-accent' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+                  }`}
+                >
+                  <Shield size={18} /> Security
+                </button>
+                <button
+                  onClick={() => setActiveTab('notifications')}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'notifications' ? 'bg-primary/20 text-accent' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+                  }`}
+                >
+                  <Bell size={18} /> Notifications
+                </button>
+                <button
+                  onClick={() => setActiveTab('features')}
+                  className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'features' ? 'bg-primary/20 text-accent' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+                  }`}
+                >
+                  <Zap size={18} /> Features
+                </button>
+              </nav>
+            </aside>
+
+            {/* Content Area */}
+            <div className="flex-1 rounded-xl border border-border/40 bg-card/40 p-6 backdrop-blur-sm">
+              {activeTab === 'general' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">General Settings</h2>
+                    <p className="text-sm text-muted-foreground">Basic platform configurations.</p>
+                  </div>
+                  
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Company Name</label>
+                      <input 
+                        defaultValue={settings.general?.companyName}
+                        className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Support Email</label>
+                      <input 
+                        type="email"
+                        defaultValue={settings.general?.supportEmail}
+                        className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Timezone</label>
+                      <select 
+                        defaultValue={settings.general?.timezone}
+                        className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                      >
+                        <option value="UTC">UTC</option>
+                        <option value="EST">EST</option>
+                        <option value="PST">PST</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Currency</label>
+                      <select 
+                        defaultValue={settings.general?.currency}
+                        className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+
+              {activeTab === 'security' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Security Policies</h2>
+                    <p className="text-sm text-muted-foreground">Manage authentication and access controls.</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background/30 p-4">
+                      <div>
+                        <p className="font-medium">Require Multi-Factor Authentication (MFA)</p>
+                        <p className="text-sm text-muted-foreground">Enforce MFA for all users across the organization.</p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input type="checkbox" defaultChecked={settings.security?.mfaRequired} className="peer sr-only" />
+                        <div className="peer h-6 w-11 rounded-full bg-border/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </div>
+
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Password Expiry (Days)</label>
+                        <input 
+                          type="number"
+                          defaultValue={settings.security?.passwordExpiryDays}
+                          className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Session Timeout (Minutes)</label>
+                        <input 
+                          type="number"
+                          defaultValue={settings.security?.sessionTimeoutMinutes}
+                          className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notifications' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Notification Hub</h2>
+                    <p className="text-sm text-muted-foreground">Configure global notification rules and integrations.</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background/30 p-4">
+                      <div>
+                        <p className="font-medium">Global Email Notifications</p>
+                        <p className="text-sm text-muted-foreground">Allow platform to send email notifications.</p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input type="checkbox" defaultChecked={settings.notifications?.emailEnabled} className="peer sr-only" />
+                        <div className="peer h-6 w-11 rounded-full bg-border/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background/30 p-4">
+                      <div>
+                        <p className="font-medium">Slack Integration</p>
+                        <p className="text-sm text-muted-foreground">Send critical alerts to a designated Slack channel.</p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input type="checkbox" defaultChecked={settings.notifications?.slackIntegration} className="peer sr-only" />
+                        <div className="peer h-6 w-11 rounded-full bg-border/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      <label className="text-sm font-medium text-foreground">Global Webhook URL (Optional)</label>
+                      <input 
+                        type="url"
+                        placeholder="https://"
+                        defaultValue={settings.notifications?.webhookUrl}
+                        className="w-full rounded-lg border border-border/40 bg-background/50 px-4 py-2 outline-none focus:border-accent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'features' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Feature Flags</h2>
+                    <p className="text-sm text-muted-foreground">Enable or disable core modules globally.</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background/30 p-4">
+                      <div>
+                        <p className="font-medium">Enterprise AI Assistant</p>
+                        <p className="text-sm text-muted-foreground">Enable AI co-pilot across the application.</p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input type="checkbox" defaultChecked={settings.features?.aiEnabled} className="peer sr-only" />
+                        <div className="peer h-6 w-11 rounded-full bg-border/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-border/20 bg-background/30 p-4">
+                      <div>
+                        <p className="font-medium">Workflow Automation</p>
+                        <p className="text-sm text-muted-foreground">Allow users to build custom workflows.</p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input type="checkbox" defaultChecked={settings.features?.workflowsEnabled} className="peer sr-only" />
+                        <div className="peer h-6 w-11 rounded-full bg-border/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 flex items-center justify-end border-t border-border/40 pt-6">
+                <button
+                  disabled={updateSettingsMutation.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white hover:bg-accent/90 disabled:opacity-50"
+                >
+                  {updateSettingsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  Save Changes
+                </button>
+              </div>
+            </div>
           </motion.div>
-
-          {/* Main Content */}
-          <motion.div variants={itemVariants} className="lg:col-span-3 space-y-6">
-            {/* Profile Settings */}
-            {activeTab === 'profile' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Profile Information</CardTitle>
-                    <CardDescription>Update your personal details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Full Name</label>
-                      <input type="text" defaultValue="Admin User" className="mt-1 w-full rounded-lg border border-border/40 bg-card/40 px-3 py-2 text-sm outline-none focus:border-accent" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Email</label>
-                      <input type="email" defaultValue="admin@businessos.ai" className="mt-1 w-full rounded-lg border border-border/40 bg-card/40 px-3 py-2 text-sm outline-none focus:border-accent" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Department</label>
-                      <input type="text" defaultValue="Leadership" className="mt-1 w-full rounded-lg border border-border/40 bg-card/40 px-3 py-2 text-sm outline-none focus:border-accent" />
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-2 rounded-lg bg-primary/20 px-4 py-2 font-medium text-accent hover:bg-primary/30"
-                    >
-                      <Save size={18} />
-                      Save Changes
-                    </motion.button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Appearance Settings */}
-            {activeTab === 'appearance' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Theme</CardTitle>
-                    <CardDescription>Choose your preferred color scheme</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      {[
-                        { name: 'Dark', value: 'dark', color: 'bg-slate-900' },
-                        { name: 'Light', value: 'light', color: 'bg-white' },
-                        { name: 'System', value: 'system', color: 'bg-gradient-to-r from-slate-900 to-white' },
-                      ].map((theme) => (
-                        <motion.button
-                          key={theme.value}
-                          whileHover={{ scale: 1.02 }}
-                          className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
-                            activeTab === 'appearance' ? 'border-accent' : 'border-border/40'
-                          }`}
-                        >
-                          <div className={`h-20 w-full rounded-lg ${theme.color}`} />
-                          <span className="font-medium">{theme.name}</span>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Notification Settings */}
-            {activeTab === 'notifications' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Notification Preferences</CardTitle>
-                    <CardDescription>Manage how you receive notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {[
-                      { label: 'Email Notifications', description: 'Receive updates via email' },
-                      { label: 'Push Notifications', description: 'Get browser push notifications' },
-                      { label: 'Task Reminders', description: 'Be reminded about pending tasks' },
-                      { label: 'Team Updates', description: 'Notifications about team activity' },
-                    ].map((notif, idx) => (
-                      <div key={idx} className="flex items-center justify-between rounded-lg border border-border/40 bg-card/40 p-4">
-                        <div>
-                          <p className="font-medium">{notif.label}</p>
-                          <p className="text-sm text-muted-foreground">{notif.description}</p>
-                        </div>
-                        <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border/40" />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Security Settings */}
-            {activeTab === 'security' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Security</CardTitle>
-                    <CardDescription>Manage your account security</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-border/40 bg-card/40 p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Password</p>
-                          <p className="text-sm text-muted-foreground">Last changed 2 months ago</p>
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          className="rounded-lg border border-border/40 px-3 py-1.5 text-sm hover:bg-card/60"
-                        >
-                          Change
-                        </motion.button>
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-border/40 bg-card/40 p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Two-Factor Authentication</p>
-                          <p className="text-sm text-muted-foreground">Not enabled</p>
-                        </div>
-                        <Badge variant="outline">Disabled</Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </motion.div>
-        </div>
+        )}
       </motion.div>
     </AppLayout>
   )

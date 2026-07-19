@@ -3,49 +3,52 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, X, CheckCircle2, AlertCircle, Info, MessageSquare } from 'lucide-react'
-import { Badge } from './badge'
-
-interface Notification {
-  id: string
-  type: 'success' | 'warning' | 'info' | 'message'
-  title: string
-  description: string
-  timestamp: string
-  read: boolean
-}
-
-const notifications: Notification[] = [
-  { id: '1', type: 'success', title: 'Project Completed', description: 'Q3 Marketing Campaign is now complete', timestamp: '2 hours ago', read: false },
-  { id: '2', type: 'warning', title: 'Budget Alert', description: 'Team budget is 80% utilized for this month', timestamp: '4 hours ago', read: false },
-  { id: '3', type: 'info', title: 'New Team Member', description: 'Jordan has joined the Design team', timestamp: '1 day ago', read: true },
-  { id: '4', type: 'message', title: 'Message from Sarah', description: 'Can you review the latest design?', timestamp: '2 days ago', read: true },
-]
+import Link from 'next/link'
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteNotification, useUnreadNotificationsCount } from '@/hooks/useNotifications'
+import { Notification } from '@/types/notification'
+import { formatDistanceToNow } from 'date-fns'
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const [items, setItems] = useState(notifications)
+  
+  // Real API hooks
+  const { data: notificationsData, isLoading } = useNotifications({ limit: 10 })
+  const { data: unreadCount = 0 } = useUnreadNotificationsCount()
+  const markAsReadMutation = useMarkNotificationRead()
+  const markAllAsReadMutation = useMarkAllNotificationsRead()
+  const deleteNotificationMutation = useDeleteNotification()
 
-  const unreadCount = items.filter(n => !n.read).length
+  const items: Notification[] = notificationsData?.notifications || []
 
   const handleMarkAsRead = (id: string) => {
-    setItems(items.map(n => n.id === id ? { ...n, read: true } : n))
+    markAsReadMutation.mutate(id)
   }
 
   const handleMarkAllAsRead = () => {
-    setItems(items.map(n => ({ ...n, read: true })))
+    markAllAsReadMutation.mutate()
   }
 
   const handleDelete = (id: string) => {
-    setItems(items.filter(n => n.id !== id))
+    deleteNotificationMutation.mutate(id)
   }
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'success': return <CheckCircle2 size={20} className="text-emerald-400" />
-      case 'warning': return <AlertCircle size={20} className="text-amber-400" />
-      case 'info': return <Info size={20} className="text-blue-400" />
-      case 'message': return <MessageSquare size={20} className="text-accent" />
-      default: return <Bell size={20} />
+      case 'Task Completed':
+      case 'Leave Approved': 
+        return <CheckCircle2 size={20} className="text-emerald-400" />
+      case 'Security Alerts':
+      case 'Leave Rejected':
+        return <AlertCircle size={20} className="text-amber-400" />
+      case 'System Alerts':
+      case 'Broadcast':
+        return <Info size={20} className="text-blue-400" />
+      case 'Comment Added':
+      case 'Task Assigned':
+      case 'Document Shared':
+        return <MessageSquare size={20} className="text-accent" />
+      default: 
+        return <Bell size={20} />
     }
   }
 
@@ -62,8 +65,10 @@ export function NotificationCenter() {
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute right-0 top-0 h-2 w-2 rounded-full bg-destructive/80"
-          />
+            className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+          >
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </motion.span>
         )}
       </motion.button>
 
@@ -91,7 +96,8 @@ export function NotificationCenter() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-accent hover:text-accent/80"
+                    disabled={markAllAsReadMutation.isPending}
+                    className="text-xs text-accent hover:text-accent/80 disabled:opacity-50"
                   >
                     Mark all as read
                   </motion.button>
@@ -100,7 +106,11 @@ export function NotificationCenter() {
 
               {/* Notifications List */}
               <div className="max-h-96 overflow-y-auto">
-                {items.length > 0 ? (
+                {isLoading ? (
+                   <div className="flex h-32 items-center justify-center text-muted-foreground">
+                    Loading notifications...
+                  </div>
+                ) : items.length > 0 ? (
                   items.map((notification, idx) => (
                     <motion.div
                       key={notification.id}
@@ -110,23 +120,25 @@ export function NotificationCenter() {
                       transition={{ delay: idx * 0.02, duration: 0.12 }}
                       whileHover={{ x: 2, backgroundColor: 'rgba(79, 70, 229, 0.1)' }}
                       whileTap={{ x: 1 }}
-                      onClick={() => handleMarkAsRead(notification.id)}
-                      className={`flex gap-3 border-b border-border/20 p-4 cursor-pointer transition-colors group ${
-                        notification.read ? 'bg-card/40' : 'bg-primary/5'
+                      onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+                      className={`group relative flex cursor-pointer gap-3 border-b border-border/20 p-4 transition-colors ${
+                        notification.is_read ? 'bg-card/40' : 'bg-primary/5'
                       } hover:bg-primary/10`}
                     >
-                      <div className="flex-shrink-0 mt-1">
+                      <div className="mt-1 flex-shrink-0">
                         {getIcon(notification.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="font-medium">{notification.title}</p>
-                          {!notification.read && (
-                            <div className="flex-shrink-0 h-2 w-2 rounded-full bg-accent mt-1" />
+                          <p className="font-medium text-sm">{notification.title}</p>
+                          {!notification.is_read && (
+                            <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{notification.description}</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">{notification.timestamp}</p>
+                        <p className="line-clamp-2 text-sm text-muted-foreground">{notification.message}</p>
+                        <p className="mt-1 text-xs text-muted-foreground/70">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </p>
                       </div>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
@@ -134,7 +146,8 @@ export function NotificationCenter() {
                           e.stopPropagation()
                           handleDelete(notification.id)
                         }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-muted-foreground hover:text-foreground"
+                        disabled={deleteNotificationMutation.isPending}
+                        className="absolute right-4 top-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 disabled:opacity-50"
                       >
                         <X size={16} />
                       </motion.button>
@@ -148,16 +161,16 @@ export function NotificationCenter() {
               </div>
 
               {/* Footer */}
-              {items.length > 0 && (
-                <div className="border-t border-border/40 px-4 py-3">
-                  <motion.button
+              <div className="border-t border-border/40 px-4 py-3">
+                <Link href="/notifications" onClick={() => setIsOpen(false)}>
+                  <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="w-full text-center text-sm text-accent hover:text-accent/80"
+                    className="w-full text-center text-sm text-accent hover:text-accent/80 cursor-pointer"
                   >
                     View all notifications
-                  </motion.button>
-                </div>
-              )}
+                  </motion.div>
+                </Link>
+              </div>
             </motion.div>
           </>
         )}
@@ -165,3 +178,4 @@ export function NotificationCenter() {
     </div>
   )
 }
+

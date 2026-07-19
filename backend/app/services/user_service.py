@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserUpdate
 from app.models.user import User
-# Assuming pwd_context / hashing utilities live in app.core.security
+# NOTE: core/security.py defines `get_password_hash`, not `hash_password`.
 from app.core.security import get_password_hash
 
 
@@ -69,12 +69,13 @@ class UserService:
                 detail="A user profile with this email address is already registered in the system."
             )
 
-        # Hash plain text password using bcrypt context prior to database serialization
+        # Hash plain text password using the recommended password-hashing algorithm
+        # prior to database serialization.
         hashed_pw = get_password_hash(schema_in.password)
-        
+
         return await self.user_repo.create(
-            obj_in=schema_in, 
-            hashed_password=hashed_pw, 
+            obj_in=schema_in,
+            hashed_password=hashed_pw,
             creator_id=creator_id
         )
 

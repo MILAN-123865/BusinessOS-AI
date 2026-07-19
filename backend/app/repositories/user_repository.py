@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.user import User
 from app.models.role import Role
+from app.models.user_role import UserRole
 from app.models.permission import Permission
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -23,7 +24,7 @@ class UserRepository:
         stmt = select(User).where(User.id == user_id)
         if not include_deleted:
             stmt = stmt.where(User.is_deleted == False)
-        
+
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
@@ -32,7 +33,7 @@ class UserRepository:
         stmt = select(User).where(func.lower(User.email) == func.lower(email))
         if not include_deleted:
             stmt = stmt.where(User.is_deleted == False)
-        
+
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
@@ -46,17 +47,29 @@ class UserRepository:
             .where(func.lower(User.email) == func.lower(email))
             .where(User.is_deleted == False)
             .options(
-                selectinload(User.roles).selectinload(Role.permissions)
+                # NOTE: the previous version only loaded `User.user_roles`
+                # (the raw association rows) and never reached down to the
+                # actual Role / Permission objects. Since PermissionChecker
+                # walks `current_user.roles -> role.permissions`, that data
+                # needs to be eagerly loaded here too, or accessing it later
+                # (outside the request's session) would fail with a
+                # MissingGreenlet / DetachedInstanceError under async
+                # SQLAlchemy. Every model in this chain also declares
+                # lazy="selectin" itself, so this explicit chain is a
+                # belt-and-suspenders safeguard, not strictly required.
+                selectinload(User.user_roles)
+                .selectinload(UserRole.role)
+                .selectinload(Role.permissions)
             )
         )
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
     async def get_multi(
-        self, 
-        *, 
-        skip: int = 0, 
-        limit: int = 100, 
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
         search: Optional[str] = None,
         organization_id: Optional[UUID] = None,
         sort_by: str = "created_at",
@@ -68,7 +81,7 @@ class UserRepository:
         """
         # Base query configurations
         base_stmt = select(User).where(User.is_deleted == False)
-        
+
         # Apply specific multi-tenant scope isolation
         if organization_id:
             base_stmt = base_stmt.where(User.organization_id == organization_id)
@@ -92,7 +105,7 @@ class UserRepository:
         # Build dynamic sorting attributes safely
         sort_attr = getattr(User, sort_by, User.created_at)
         order_clause = sort_attr.desc() if sort_desc else sort_attr.asc()
-        
+
         # Build fully loaded pagination statements
         query_stmt = base_stmt.order_by(order_clause).offset(skip).limit(limit)
         query_result = await self.db.execute(query_stmt)
@@ -124,17 +137,17 @@ class UserRepository:
         Saves updates incrementally using transaction tracking states.
         """
         update_data = obj_in.model_dump(exclude_unset=True)
-        
+
         # Intercept specific fields if they represent special security updates
         if "password" in update_data:
             raise ValueError("Directly updating passwords through generic user update vectors is restricted.")
 
         for field, value in update_data.items():
             setattr(db_obj, field, value)
-            
+
         if updater_id:
             db_obj.updated_by = updater_id
-            
+
         self.db.add(db_obj)
         await self.db.flush()
         return db_obj
@@ -145,7 +158,7 @@ class UserRepository:
         db_obj.deleted_at = func.now()
         if deleter_id:
             db_obj.updated_by = deleter_id
-            
+
         self.db.add(db_obj)
         await self.db.flush()
         return db_obj
