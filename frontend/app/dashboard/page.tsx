@@ -166,7 +166,13 @@ export default function DashboardPage() {
 
             {/* Charts Section */}
             <motion.div variants={itemVariants}>
-              <DashboardCharts data={overview.charts} />
+              {overview?.charts ? (
+                <DashboardCharts data={overview.charts} />
+              ) : (
+                <div className="h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40 flex items-center justify-center">
+                  <span className="text-muted-foreground">Loading charts...</span>
+                </div>
+              )}
             </motion.div>
 
             {/* Content Grid */}

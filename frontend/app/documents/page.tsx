@@ -1,18 +1,13 @@
 'use client'
 
+import { useRef } from 'react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { FileText, Folder, Share2, MoreHorizontal, Clock, Eye } from 'lucide-react'
-
-const documents = [
-  { id: 1, name: 'Q3 Strategy Document', type: 'Document', size: '2.4 MB', modified: '2 hours ago', shared: true },
-  { id: 2, name: 'Product Roadmap', type: 'Spreadsheet', size: '1.1 MB', modified: '1 day ago', shared: true },
-  { id: 3, name: 'Design Guidelines', type: 'Document', size: '5.2 MB', modified: '3 days ago', shared: false },
-  { id: 4, name: 'Budget Planning 2024', type: 'Spreadsheet', size: '0.8 MB', modified: '5 days ago', shared: true },
-  { id: 5, name: 'Team Handbook', type: 'Document', size: '3.1 MB', modified: '1 week ago', shared: true },
-]
+import { FileText, Clock, Trash2, Loader2, Upload } from 'lucide-react'
+import { useDocuments, useUploadDocument, useDeleteDocument } from '@/hooks/useDocuments'
+import { format } from 'date-fns'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -28,6 +23,38 @@ const itemVariants = {
 }
 
 export default function DocumentsPage() {
+  const { data: documents = [], isLoading } = useDocuments()
+  const uploadMutation = useUploadDocument()
+  const deleteMutation = useDeleteDocument()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      uploadMutation.mutate({ file })
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this document?')) {
+      deleteMutation.mutate(id)
+    }
+  }
+
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const totalSize = documents.reduce((acc, doc) => acc + (doc.size || 0), 0)
+
   return (
     <AppLayout>
       <motion.div
@@ -42,13 +69,34 @@ export default function DocumentsPage() {
             <h1 className="text-4xl font-bold tracking-tight">Documents</h1>
             <p className="mt-2 text-muted-foreground">Organize and share your documents</p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="rounded-lg bg-primary/20 px-4 py-2.5 font-medium text-accent hover:bg-primary/30"
-          >
-            Upload Document
-          </motion.button>
+          <div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
+            />
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleUploadClick}
+              disabled={uploadMutation.isPending}
+              className="flex items-center gap-2 rounded-lg bg-primary/20 px-4 py-2.5 font-medium text-accent hover:bg-primary/30 disabled:opacity-50"
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={18} />
+                  Upload Document
+                </>
+              )}
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* Quick Stats */}
@@ -58,8 +106,8 @@ export default function DocumentsPage() {
         >
           {[
             { label: 'Total Documents', value: String(documents.length) },
-            { label: 'Shared', value: String(documents.filter(d => d.shared).length) },
-            { label: 'Total Size', value: '15.6 MB' },
+            { label: 'Total Downloads (Sum)', value: String(documents.reduce((acc, d) => acc + (d.downloads || 0), 0)) },
+            { label: 'Total Storage Size', value: formatSize(totalSize) },
           ].map((stat, idx) => (
             <motion.div key={idx} variants={itemVariants}>
               <Card>
@@ -80,46 +128,65 @@ export default function DocumentsPage() {
               <CardDescription>Recently accessed and updated files</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {documents.map((doc, idx) => (
-                  <motion.div
-                    key={doc.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between rounded-lg border border-border/40 bg-card/40 p-4 hover:bg-card/60 transition-colors group"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
-                        <FileText size={20} className="text-accent" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{doc.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock size={12} />
-                          {doc.modified}
-                          {' • '}
-                          {doc.size}
+              {isLoading ? (
+                <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
+                  <Loader2 size={24} className="animate-spin text-accent mb-2" />
+                  <p>Loading documents...</p>
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="flex h-32 flex-col items-center justify-center text-center text-muted-foreground border border-dashed border-border/40 rounded-lg p-6">
+                  <p className="font-medium text-foreground">No documents found</p>
+                  <p className="text-sm mt-1">Upload a document to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documents.map((doc, idx) => (
+                    <motion.div
+                      key={doc.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="flex items-center justify-between rounded-lg border border-border/40 bg-card/40 p-4 hover:bg-card/60 transition-colors group"
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+                          <FileText size={20} className="text-accent" />
+                        </div>
+                        <div className="flex-1">
+                          <a
+                            href={doc.download_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium hover:underline text-foreground hover:text-accent"
+                          >
+                            {doc.name}
+                          </a>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Clock size={12} />
+                            {format(new Date(doc.created_at), 'MMM dd, yyyy')}
+                            {' • '}
+                            {formatSize(doc.size)}
+                            {' • '}
+                            Downloads: {doc.downloads}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">{doc.type}</Badge>
-                      {doc.shared && (
-                        <motion.button whileHover={{ scale: 1.05 }} className="text-accent">
-                          <Share2 size={18} />
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{doc.extension.toUpperCase() || 'FILE'}</Badge>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(doc.id)}
+                          disabled={deleteMutation.isPending}
+                          className="rounded-lg p-1.5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 size={18} />
                         </motion.button>
-                      )}
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                      >
-                        <MoreHorizontal size={18} />
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

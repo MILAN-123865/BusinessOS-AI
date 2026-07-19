@@ -24,6 +24,10 @@ from app.api.project import router as project_router
 from app.api.task import router as task_router
 from app.api.calendar import router as calendar_router
 from app.api.meeting import router as meeting_router
+from app.api.analytics import router as analytics_router
+from app.api.document import router as document_router
+from app.api.ai import router as ai_router
+from app.api.workflow import router as workflow_router
 
 # Setup structured logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -56,6 +60,12 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+@app.get("/test-cors")
+def get_cors():
+    from app.config.settings import settings
+    return {"cors": settings.CORS_ALLOWED_ORIGINS}
+
 
 
 # ==============================================================================
@@ -124,7 +134,6 @@ async def universal_exception_handler(request: Request, exc: Exception) -> JSONR
         }
     )
 
-
 # ==============================================================================
 # ROUTER BINDINGS
 # ==============================================================================
@@ -180,6 +189,26 @@ app.include_router(
 
 app.include_router(
     meeting_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    analytics_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    document_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    ai_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    workflow_router,
     prefix=settings.API_V1_PREFIX
 )
 

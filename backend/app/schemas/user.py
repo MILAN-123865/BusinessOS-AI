@@ -41,6 +41,14 @@ class UserBase(BaseModel):
         None, 
         description="Reference to the specific department the user belongs to."
     )
+    is_superuser: bool = Field(
+        False,
+        description="Indicates if the user has super admin privileges."
+    )
+    roles: List[str] = Field(
+        default_factory=list,
+        description="List of role names."
+    )
 
 
 # ==============================================================================

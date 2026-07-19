@@ -73,9 +73,12 @@ class PermissionChecker:
         self.required_permissions = required_permissions
 
     def __call__(self, current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.is_superuser:
+            return current_user
+
         # Extract flat deduped permission codenames across all user-assigned roles
         user_permissions = {
-            perm.codename
+            perm.name
             for role in current_user.roles
             for perm in role.permissions
             if not role.is_deleted and not perm.is_deleted

@@ -42,8 +42,9 @@ export interface UpcomingEvent {
 
 export interface Notification {
   id: string
+  type: string
   title: string
-  message: string
+  description: string
   read: boolean
   timestamp: string
 }

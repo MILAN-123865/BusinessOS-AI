@@ -71,10 +71,20 @@ async def list_users(
         sort_by=sort_by,
         sort_desc=sort_desc
     )
+    response_users = []
+    for u in users:
+        ur = UserResponse.model_validate(u)
+        # Attempt to load roles if joined
+        role_names = []
+        if hasattr(u, "user_roles"):
+            role_names = [r.role.name for r in u.user_roles if hasattr(r, "role")]
+        ur.roles = role_names
+        response_users.append(ur)
+
     return {
         "success": True,
         "message": f"Successfully mapped {len(users)} users. Global database records match: {total}.",
-        "data": [UserResponse.model_validate(u) for u in users],
+        "data": response_users,
         "errors": None
     }
 
@@ -138,10 +148,14 @@ async def get_user(
     current_user: User = Depends(check_permissions(["user:read"]))
 ) -> dict:
     user = await service.get_user_by_id(user_id)
+    ur = UserResponse.model_validate(user)
+    if hasattr(user, "user_roles"):
+        ur.roles = [r.role.name for r in user.user_roles if hasattr(r, "role")]
+
     return {
         "success": True,
         "message": "Target entity data structures fetched successfully.",
-        "data": UserResponse.model_validate(user),
+        "data": ur,
         "errors": None
     }
 
