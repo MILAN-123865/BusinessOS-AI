@@ -1,0 +1,12 @@
+{
+  "name": "BusinessOS AI",
+  "description": "Enterprise operating system with real-time chat, task manager, workflow automation, and an advanced AI workspace copilot.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
