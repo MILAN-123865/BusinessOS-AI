@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getWorkflowsApi, getWorkflowApi, createWorkflowApi, updateWorkflowStatusApi, getWorkflowExecutionsApi } from '../api/workflow'
+import { getWorkflowsApi, getWorkflowApi, createWorkflowApi, updateWorkflowStatusApi, getWorkflowExecutionsApi, runWorkflowApi } from '../api/workflow'
 import { WorkflowCreateData, WorkflowStatus } from '../types/workflow'
 
 export const useWorkflows = () => {
@@ -34,6 +34,18 @@ export const useUpdateWorkflowStatus = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] })
       queryClient.invalidateQueries({ queryKey: ['workflow', data.id] })
+    }
+  })
+}
+
+export const useRunWorkflow = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => runWorkflowApi(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-executions', data.id] })
     }
   })
 }

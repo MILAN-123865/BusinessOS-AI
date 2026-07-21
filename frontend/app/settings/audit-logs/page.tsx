@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { motion } from 'framer-motion'
 import { useAuditLogs, useExportAuditLogs } from '@/hooks/useAudit'
 import { AuditLogFilter, AuditAction } from '@/types/audit'
@@ -43,7 +42,7 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -201,6 +200,6 @@ export default function AuditLogsPage() {
           )}
         </motion.div>
       </motion.div>
-    </AppLayout>
+    </>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { motion } from 'framer-motion'
 import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/useSettings'
 import { Settings, Shield, Bell, Zap, Save, Loader2 } from 'lucide-react'
@@ -30,7 +29,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -272,6 +271,6 @@ export default function SettingsPage() {
           </motion.div>
         )}
       </motion.div>
-    </AppLayout>
+    </>
   )
 }

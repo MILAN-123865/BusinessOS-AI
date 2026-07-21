@@ -4,18 +4,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
     tsconfigPath: './tsconfig.json',
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: {
-    unoptimized: true,
-  },
-  experimental: {
-    allowedDevOrigins: [
-      'ais-dev-6jzhepkq5rthhopa3wxcbk-685882207368.asia-east1.run.app',
-      'ais-pre-6jzhepkq5rthhopa3wxcbk-685882207368.asia-east1.run.app',
-      'localhost:3000'
-    ]
+  turbopack: {
+    root: '..',
   },
   async rewrites() {
     return [

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   useClients,
@@ -46,7 +45,7 @@ const clientSchema = z.object({
   website: z.string().url('Invalid website URL').optional().or(z.literal('')),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().max(50).optional().or(z.literal('')),
-  status: z.string().default('Active'),
+  status: z.string(),
   address: z.string().max(500).optional().or(z.literal('')),
   city: z.string().max(100).optional().or(z.literal('')),
   state: z.string().max(100).optional().or(z.literal('')),
@@ -64,7 +63,7 @@ const contactSchema = z.object({
   designation: z.string().max(100).optional().or(z.literal('')),
   email: z.string().email('Invalid email address'),
   phone: z.string().max(50).optional().or(z.literal('')),
-  is_primary: z.boolean().default(false),
+  is_primary: z.boolean(),
 })
 
 type ContactFormValues = z.infer<typeof contactSchema>
@@ -264,7 +263,7 @@ export default function ClientsPage() {
   })
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -831,6 +830,6 @@ export default function ClientsPage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

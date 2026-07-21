@@ -4,8 +4,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentUser } from '@/hooks/useAuth'
+import { AppLayout } from '@/components/layout/app-layout'
 
-const PUBLIC_PATHS = ['/login', '/landing', '/']
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/']
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, accessToken, updateUser } = useAuthStore()
@@ -55,7 +56,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer)
   }, [isMounted, storeHydrated])
 
-  const isPublicPath = PUBLIC_PATHS.includes(pathname)
+  const isPublicPath = pathname ? PUBLIC_PATHS.includes(pathname) : false
   const isLoggedIn = isAuthenticated && accessToken
   
   // Only decide redirects once the Zustand store is hydrated from localStorage
@@ -90,8 +91,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Safe to render protected page contents
-  return <>{children}</>
+  // Safe to render protected page contents inside the global AppLayout to prevent remounting
+  return (
+    <AppLayout>
+      {children}
+    </AppLayout>
+  )
 }
 
 

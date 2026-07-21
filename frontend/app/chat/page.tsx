@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { ChatSidebar } from '@/components/chat/ChatSidebar'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 import { useChatChannels } from '@/hooks/useChat'
@@ -18,7 +17,7 @@ export default function ChatPage() {
   const activeChannel = channels.find(c => c.id === activeChannelId) || null
 
   return (
-    <AppLayout>
+    <>
       <div className="flex h-[calc(100vh-8rem)] w-full overflow-hidden rounded-xl border border-border/40 shadow-sm">
         {isLoading ? (
           <div className="flex h-full w-full items-center justify-center bg-card/30 backdrop-blur-md">
@@ -38,6 +37,6 @@ export default function ChatPage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

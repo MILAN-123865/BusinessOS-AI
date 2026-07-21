@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sendChatMessageApi, getChatHistoryApi, getChatSessionsApi } from '../api/ai'
+import { sendChatMessageApi, getChatHistoryApi, getChatSessionsApi, createChatSessionApi, deleteChatSessionApi, clearChatApi } from '../api/ai'
 import { AIChatRequest } from '../types/ai'
 
 export const useAiChatHistory = (sessionId?: string) => {
@@ -7,7 +7,7 @@ export const useAiChatHistory = (sessionId?: string) => {
     queryKey: ['ai-chat', sessionId],
     queryFn: () => getChatHistoryApi(sessionId!),
     enabled: !!sessionId,
-    staleTime: 60000,
+    staleTime: 1000, // Make staleTime very short for more reactive chats
   })
 }
 
@@ -15,7 +15,7 @@ export const useAiChatSessions = () => {
   return useQuery({
     queryKey: ['ai-sessions'],
     queryFn: getChatSessionsApi,
-    staleTime: 300000, // 5 minutes
+    staleTime: 5000, // 5 seconds
   })
 }
 
@@ -26,7 +26,38 @@ export const useSendAiMessage = () => {
     onSuccess: (data) => {
       if (data.sessionId) {
         queryClient.invalidateQueries({ queryKey: ['ai-chat', data.sessionId] })
+        queryClient.invalidateQueries({ queryKey: ['ai-sessions'] })
       }
+    }
+  })
+}
+
+export const useCreateAiSession = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (title: string) => createChatSessionApi(title),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-sessions'] })
+    }
+  })
+}
+
+export const useDeleteAiSession = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sessionId: string) => deleteChatSessionApi(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-sessions'] })
+    }
+  })
+}
+
+export const useClearChat = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sessionId: string) => clearChatApi(sessionId),
+    onSuccess: (_, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['ai-chat', sessionId] })
     }
   })
 }

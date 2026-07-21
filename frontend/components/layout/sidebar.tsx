@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, Menu, X, Settings, Bell, User, LogOut, Grid3x3, Users, FolderOpen, Building2, FileText, BarChart3, Search, Shield, Calendar } from 'lucide-react'
+import { ChevronRight, Menu, X, Settings, Bell, User, LogOut, Grid3x3, Users, FolderOpen, Building2, FileText, BarChart3, Search, Shield, Calendar, MessageSquare } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuthStore } from '@/store/authStore'
@@ -19,33 +19,36 @@ interface NavSection {
   items: NavItem[]
 }
 
-const navSections: NavSection[] = [
-  {
-    title: 'Workspace',
-    items: [
-      { icon: <Grid3x3 size={20} />, label: 'Dashboard', href: '/dashboard' },
-      { icon: <Calendar size={20} />, label: 'Calendar & Meetings', href: '/calendar' },
-      { icon: <Building2 size={20} />, label: 'Organization', href: '/organization' },
-      { icon: <Shield size={20} />, label: 'Roles & RBAC', href: '/roles' },
-      { icon: <Users size={20} />, label: 'Employees', href: '/employees' },
-      { icon: <FolderOpen size={20} />, label: 'Projects', href: '/projects' },
-      { icon: <Building2 size={20} />, label: 'Clients', href: '/clients' },
-      { icon: <FileText size={20} />, label: 'Documents', href: '/documents' },
-    ],
-  },
-  {
-    title: 'Analytics',
-    items: [
-      { icon: <BarChart3 size={20} />, label: 'Analytics', href: '/analytics' },
-    ],
-  },
-]
+
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const [isPinned, setIsPinned] = useState(false)
   const user = useAuthStore((state) => state.user)
   const logout = useLogout()
+
+  const navSections: NavSection[] = [
+    {
+      title: 'Workspace',
+      items: [
+        { icon: <Grid3x3 size={20} />, label: 'Dashboard', href: '/dashboard' },
+        { icon: <Calendar size={20} />, label: 'Calendar & Meetings', href: '/calendar' },
+        { icon: <Building2 size={20} />, label: 'Organization', href: '/organization' },
+        ...(user?.is_superuser ? [{ icon: <Shield size={20} />, label: 'Roles & RBAC', href: '/roles' }] : []),
+        ...(user?.is_superuser || user?.permissions?.includes('employees.manage') ? [{ icon: <Users size={20} />, label: 'Employees', href: '/employees' }] : []),
+        { icon: <FolderOpen size={20} />, label: 'Projects', href: '/projects' },
+        { icon: <Building2 size={20} />, label: 'Clients', href: '/clients' },
+        { icon: <FileText size={20} />, label: 'Documents', href: '/documents' },
+        { icon: <MessageSquare size={20} />, label: 'AI Chatbot', href: '/ai-chatbot' },
+      ],
+    },
+    {
+      title: 'Analytics',
+      items: [
+        { icon: <BarChart3 size={20} />, label: 'Analytics', href: '/analytics' },
+      ],
+    },
+  ]
 
   return (
     <>
@@ -82,8 +85,8 @@ export function Sidebar() {
         {/* Logo Section */}
         <div className="flex items-center justify-between border-b border-border/40 p-4">
           <motion.div
-            animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? 'auto' : 0 }}
-            className="overflow-hidden"
+            animate={{ opacity: isOpen ? 1 : 0 }}
+            className="overflow-hidden whitespace-nowrap"
           >
             <span className="text-lg font-bold text-accent">BusinessOS</span>
           </motion.div>
@@ -131,8 +134,8 @@ export function Sidebar() {
                         {item.icon}
                       </span>
                       <motion.span
-                        animate={{ opacity: isOpen ? 1 : 0, width: isOpen ? 'auto' : 0 }}
-                        className="overflow-hidden"
+                        animate={{ opacity: isOpen ? 1 : 0 }}
+                        className="overflow-hidden whitespace-nowrap"
                       >
                         {item.label}
                         {item.badge && (

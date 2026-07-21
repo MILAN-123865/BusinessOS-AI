@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import { useUpdateProfile } from '@/hooks/useProfile'
 import { motion } from 'framer-motion'
@@ -70,7 +69,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header Title */}
         <div>
@@ -306,6 +305,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </>
   )
 }

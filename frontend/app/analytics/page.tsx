@@ -1,13 +1,27 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { motion } from 'framer-motion'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { Calendar, Download, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { useAnalyticsData, useExportAnalytics } from '@/hooks/useAnalytics'
 import { AnalyticsFilterParams } from '@/types/analytics'
+import dynamic from 'next/dynamic'
+
+const RevenueChart = dynamic(() => import('@/components/analytics/charts').then(mod => mod.RevenueChart), { 
+  ssr: false, 
+  loading: () => <div className="h-[320px] w-full flex items-center justify-center animate-pulse bg-card/20 rounded-xl"><Loader2 className="animate-spin text-muted-foreground" /></div> 
+})
+
+const TaskChart = dynamic(() => import('@/components/analytics/charts').then(mod => mod.TaskChart), { 
+  ssr: false, 
+  loading: () => <div className="h-[260px] w-full flex items-center justify-center animate-pulse bg-card/20 rounded-xl"><Loader2 className="animate-spin text-muted-foreground" /></div> 
+})
+
+const PerformanceChart = dynamic(() => import('@/components/analytics/charts').then(mod => mod.PerformanceChart), { 
+  ssr: false, 
+  loading: () => <div className="h-[320px] w-full flex items-center justify-center animate-pulse bg-card/20 rounded-xl"><Loader2 className="animate-spin text-muted-foreground" /></div> 
+})
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -19,7 +33,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 }
 
 export default function AnalyticsPage() {
@@ -41,7 +55,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -148,40 +162,7 @@ export default function AnalyticsPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={320}>
-                      <AreaChart data={analytics.chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#222" opacity={0.3} />
-                        <XAxis dataKey="month" stroke="#666" style={{ fontSize: '12px' }} />
-                        <YAxis stroke="#666" style={{ fontSize: '12px' }} />
-                        <Tooltip
-                          contentStyle={{ 
-                            backgroundColor: '#0f1419', 
-                            border: '1px solid rgba(79, 70, 229, 0.3)',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)'
-                          }}
-                          labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                        />
-                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                        <Area type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" dot={{ fill: '#4f46e5', r: 5 }} activeDot={{ r: 7 }} />
-                        <Area type="monotone" dataKey="expenses" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorExpenses)" dot={{ fill: '#f59e0b', r: 5 }} activeDot={{ r: 7 }} />
-                        <Area type="monotone" dataKey="profit" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" dot={{ fill: '#22c55e', r: 5 }} activeDot={{ r: 7 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <RevenueChart data={analytics.chartData} />
                   </CardContent>
                 </Card>
               </motion.div>
@@ -194,35 +175,7 @@ export default function AnalyticsPage() {
                     <CardDescription>By status</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={analytics.taskDistribution}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value }) => `${name}: ${value}%`}
-                          outerRadius={90}
-                          innerRadius={50}
-                          fill="#8884d8"
-                          dataKey="value"
-                          paddingAngle={2}
-                        >
-                          {analytics.taskDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ 
-                            backgroundColor: '#0f1419', 
-                            border: '1px solid rgba(79, 70, 229, 0.3)',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)'
-                          }}
-                          labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <TaskChart data={analytics.taskDistribution} />
                     <div className="mt-6 grid w-full grid-cols-2 gap-3">
                       {analytics.taskDistribution.map((item, idx) => (
                         <motion.div key={idx} className="flex items-center gap-2 rounded-lg border border-border/20 bg-card/50 p-2 text-xs">
@@ -244,42 +197,13 @@ export default function AnalyticsPage() {
                   <CardDescription>Monthly comparison</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={320}>
-                    <BarChart data={analytics.chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="barRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
-                          <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6}/>
-                        </linearGradient>
-                        <linearGradient id="barExpenses" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f59e0b" stopOpacity={1}/>
-                          <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.6}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#222" opacity={0.3} />
-                      <XAxis dataKey="month" stroke="#666" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#666" style={{ fontSize: '12px' }} />
-                      <Tooltip
-                        contentStyle={{ 
-                          backgroundColor: '#0f1419', 
-                          border: '1px solid rgba(79, 70, 229, 0.3)',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)'
-                        }}
-                        labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                        cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
-                      />
-                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                      <Bar dataKey="revenue" fill="url(#barRevenue)" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                      <Bar dataKey="expenses" fill="url(#barExpenses)" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <PerformanceChart data={analytics.chartData} />
                 </CardContent>
               </Card>
             </motion.div>
           </>
         )}
       </motion.div>
-    </AppLayout>
+    </>
   )
 }

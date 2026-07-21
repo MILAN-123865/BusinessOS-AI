@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bell,
@@ -82,7 +81,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="mx-auto max-w-5xl space-y-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -280,6 +279,6 @@ export default function NotificationsPage() {
           </Card>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

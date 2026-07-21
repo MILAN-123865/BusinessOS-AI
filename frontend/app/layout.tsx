@@ -5,6 +5,7 @@ import './globals.css'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { AuthGuard } from '@/components/providers/auth-guard'
 import { PermissionProvider } from '@/components/providers/permission-provider'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -45,6 +46,7 @@ export default function RootLayout({
             </AuthGuard>
           </PermissionProvider>
         </QueryProvider>
+        <Toaster position="top-right" theme="dark" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

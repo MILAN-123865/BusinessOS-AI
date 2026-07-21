@@ -21,6 +21,11 @@ export const updateWorkflowStatusApi = async (id: string, status: WorkflowStatus
   return response.data.data
 }
 
+export const runWorkflowApi = async (id: string): Promise<Workflow> => {
+  const response = await api.post<{ success: boolean; data: Workflow }>(`/workflows/${id}/run`)
+  return response.data.data
+}
+
 export const getWorkflowExecutionsApi = async (workflowId: string): Promise<WorkflowExecution[]> => {
   const response = await api.get<{ success: boolean; data: WorkflowExecution[] }>(`/workflows/${workflowId}/executions`)
   return response.data.data

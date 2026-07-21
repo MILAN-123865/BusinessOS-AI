@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   useProjects,
@@ -431,8 +430,8 @@ export default function ProjectsPage() {
 
   if (projectsWithDates.length > 0) {
     try {
-      const startDates = projectsWithDates.map((p) => new Date(p.start_date))
-      const endDates = projectsWithDates.map((p) => new Date(p.end_date))
+      const startDates = projectsWithDates.map((p) => new Date(p.start_date as string))
+      const endDates = projectsWithDates.map((p) => new Date(p.end_date as string))
       
       const absoluteMin = new Date(Math.min(...startDates.map((d) => d.getTime())))
       const absoluteMax = new Date(Math.max(...endDates.map((d) => d.getTime())))
@@ -538,7 +537,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1561,6 +1560,6 @@ export default function ProjectsPage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

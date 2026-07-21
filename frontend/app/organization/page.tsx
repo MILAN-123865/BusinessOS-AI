@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   useCurrentOrganization,
@@ -164,7 +163,7 @@ export default function OrganizationPage() {
   const isLoading = currentOrgLoading || (user?.is_superuser && allOrgsLoading)
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -474,8 +473,8 @@ export default function OrganizationPage() {
                   {/* Create / Edit Department Card Form */}
                   {(isDepCreateOpen || editingDep) && (
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       className="rounded-2xl border border-border/40 bg-card/60 p-6 backdrop-blur-md space-y-4"
                     >
                       <h4 className="font-semibold text-foreground">
@@ -691,8 +690,8 @@ export default function OrganizationPage() {
                   {/* Create Tenant Form / Card */}
                   {isCreateOpen && (
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       className="rounded-2xl border border-border/40 bg-card/60 p-6 backdrop-blur-md space-y-4"
                     >
                       <h4 className="font-semibold text-foreground">New Tenancy Specification</h4>
@@ -783,6 +782,6 @@ export default function OrganizationPage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

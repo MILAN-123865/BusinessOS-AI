@@ -17,6 +17,8 @@ export interface AIChatSession {
 export interface AIChatRequest {
   message: string
   sessionId?: string
+  model?: string
+  systemInstruction?: string
 }
 
 export interface AIChatResponse {

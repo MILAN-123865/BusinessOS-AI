@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   useEmployees,
@@ -264,7 +263,7 @@ export default function EmployeesPage() {
   })
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -843,6 +842,6 @@ export default function EmployeesPage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

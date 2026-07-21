@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   usePermissions,
@@ -68,7 +67,7 @@ export default function PermissionsPage() {
   // Access Control: Only Superusers/Admins can access this page
   if (user && !user.is_superuser) {
     return (
-      <AppLayout>
+      <>
         <div className="flex h-[70vh] flex-col items-center justify-center gap-4 text-center">
           <Lock size={64} className="text-destructive animate-pulse" />
           <h1 className="text-3xl font-bold tracking-tight">Access Control Warning</h1>
@@ -76,7 +75,7 @@ export default function PermissionsPage() {
             You do not possess the necessary scopes (`permissions.manage`) to configure structural security matrix policies.
           </p>
         </div>
-      </AppLayout>
+      </>
     )
   }
 
@@ -148,7 +147,7 @@ export default function PermissionsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -391,6 +390,6 @@ export default function PermissionsPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }

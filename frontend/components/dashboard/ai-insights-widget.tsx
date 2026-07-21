@@ -188,9 +188,9 @@ export function AIInsightsWidget() {
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
                           className="pt-2 border-t border-border/10 mt-2 space-y-1.5"
                         >
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Business Impact</div>

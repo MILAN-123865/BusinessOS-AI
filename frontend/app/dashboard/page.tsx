@@ -1,12 +1,12 @@
 'use client'
 
-import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
 import { TrendingUp, Users, FolderOpen, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { useDashboardOverview, useRecentActivities, useUpcomingEvents } from '@/hooks/useDashboard'
-import { DashboardCharts } from '@/components/dashboard/dashboard-charts'
+import dynamic from 'next/dynamic'
+const DashboardCharts = dynamic(() => import('@/components/dashboard/dashboard-charts').then((mod) => mod.DashboardCharts), { ssr: false })
 import { DashboardWidgets } from '@/components/calendar/DashboardWidgets'
 import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
 
@@ -23,12 +23,8 @@ const containerVariants = {
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: 'easeOut' },
-  },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 }
 
 const getEventIcon = (type: string) => {
@@ -62,7 +58,7 @@ export default function DashboardPage() {
   const isLoading = overviewLoading || activitiesLoading || eventsLoading
 
   return (
-    <AppLayout>
+    <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -257,6 +253,6 @@ export default function DashboardPage() {
           </>
         )}
       </motion.div>
-    </AppLayout>
+    </>
   )
 }

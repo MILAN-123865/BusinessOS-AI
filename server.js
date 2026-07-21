@@ -550,8 +550,21 @@ let tasks = [];
 
 let workflows = [
   { id: 'wf-1', name: 'Invoice Dispatch Automation', description: 'Trigger PDF invoice dispatches to client contacts on project milestone completions.', status: 'ACTIVE', executionCount: 142, successRate: 99, updatedAt: '2024-05-12T14:30:00Z' },
-  { id: 'wf-2', name: 'Security Log Audit Scan', description: 'Hourly scans of system access logs for suspicious administrative policy alterations.', status: 'PAUSED', executionCount: 1054, successRate: 100, updatedAt: '2024-06-01T09:00:00Z' }
+  { id: 'wf-2', name: 'Security Log Audit Scan', description: 'Hourly scans of system access logs for suspicious administrative policy alterations.', status: 'PAUSED', executionCount: 1054, successRate: 100, updatedAt: '2024-06-01T09:00:00Z' },
+  { id: 'wf-3', name: 'CRM Hubspot Contact Sync', description: 'Real-time synchronization of customer contact metadata with external Hubspot CRM services.', status: 'FAILED', executionCount: 88, successRate: 85, updatedAt: '2024-07-18T16:15:00Z' }
 ];
+
+let workflowExecutions = {
+  'wf-1': [
+    { id: 'exec-wf-1-1', workflowId: 'wf-1', status: 'SUCCESS', startedAt: '2024-05-12T14:30:00Z', completedAt: '2024-05-12T14:30:05Z', logs: ['Triggered successfully', 'Dispatched PDF to client'] }
+  ],
+  'wf-2': [
+    { id: 'exec-wf-2-1', workflowId: 'wf-2', status: 'SUCCESS', startedAt: '2024-06-01T09:00:00Z', completedAt: '2024-06-01T09:00:10Z', logs: ['Triggered successfully', 'Security logs clear'] }
+  ],
+  'wf-3': [
+    { id: 'exec-wf-3-1', workflowId: 'wf-3', status: 'FAILED', startedAt: '2024-07-18T16:15:00Z', completedAt: '2024-07-18T16:15:12Z', logs: ['Triggered successfully', 'API error: Hubspot key expired (401 Unauthorized)'] }
+  ]
+};
 
 let auditLogs = [
   { id: 'log-1', createdAt: '2024-07-19T05:00:00Z', action: 'LOGIN', userId: 'user-1', userEmail: 'admin@company.com', resourceType: 'user', resourceId: 'user-1', ipAddress: '127.0.0.1', details: { "user_agent": "Mozilla/5.0", "status": "SUCCESS" } },
@@ -1628,12 +1641,55 @@ apiRouter.patch('/workflows/:id/status', (req, res) => {
 });
 
 apiRouter.get('/workflows/:id/executions', (req, res) => {
+  const execs = workflowExecutions[req.params.id] || [];
   res.json({
     success: true,
-    data: [
-      { id: 'exec-1', timestamp: new Date().toISOString(), status: 'SUCCESS', details: 'Triggered successfully' }
-    ]
+    data: execs
   });
+});
+
+apiRouter.post('/workflows/:id/run', (req, res) => {
+  const id = req.params.id;
+  const wf = workflows.find(w => w.id === id);
+  if (wf) {
+    wf.executionCount = (wf.executionCount || 0) + 1;
+    wf.lastRunAt = new Date().toISOString();
+    wf.updatedAt = new Date().toISOString();
+    
+    // If it was failed, let's reset it to ACTIVE when manual trigger succeeds
+    if (wf.status === 'FAILED') {
+      wf.status = 'ACTIVE';
+    }
+    
+    // Increment success rate slightly or keep it high
+    if (wf.successRate < 100) {
+      wf.successRate = parseFloat(Math.min(100, wf.successRate + 0.5).toFixed(1));
+    }
+
+    if (!workflowExecutions[id]) {
+      workflowExecutions[id] = [];
+    }
+    
+    const newExec = {
+      id: `exec-${Date.now()}`,
+      workflowId: id,
+      status: 'SUCCESS',
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      logs: [
+        'Manual execution triggered by user request',
+        'Fetching context and configuration schemas',
+        'Executing automation steps',
+        'All actions completed successfully'
+      ]
+    };
+    
+    workflowExecutions[id].unshift(newExec);
+    
+    res.json({ success: true, data: wf });
+  } else {
+    res.status(404).json({ success: false, detail: 'Workflow not found' });
+  }
 });
 
 // Audit Logs
@@ -1823,6 +1879,8 @@ apiRouter.post('/ai/chat', async (req, res) => {
   const userContent = req.body.content || req.body.message || '';
   const sessionId = req.body.sessionId;
   const targetSessionId = sessionId || 'session-1';
+  const chosenModel = req.body.model || 'gemini-3.5-flash';
+  const customRoleInstruction = req.body.systemInstruction || req.body.role || '';
   
   let aiResponseText = '';
   const apiKey = process.env.GEMINI_API_KEY || '';
@@ -1852,6 +1910,16 @@ apiRouter.post('/ai/chat', async (req, res) => {
     console.error('Failed to fetch from SQLite in AI chat:', dbErr);
   }
 
+  // Handle dynamic session creation
+  if (targetSessionId && !aiSessions.some(s => s.id === targetSessionId)) {
+    const titleText = userContent.trim() ? (userContent.slice(0, 30) + (userContent.length > 30 ? '...' : '')) : 'New AI Chat';
+    aiSessions.push({
+      id: targetSessionId,
+      title: titleText,
+      created_at: new Date().toISOString()
+    });
+  }
+
   if (apiKey && apiKey !== 'YOUR_GEMINI_API_KEY') {
     try {
       if (!aiInstance) {
@@ -1865,7 +1933,7 @@ apiRouter.post('/ai/chat', async (req, res) => {
         });
       }
 
-      const systemInstruction = `You are BusinessOS AI, an intelligent, context-aware enterprise workspace copilot.
+      const systemInstruction = `${customRoleInstruction ? `CHATBOT ROLE & INSTRUCTIONS:\n${customRoleInstruction}\n\n` : ''}You are BusinessOS AI, an intelligent, context-aware enterprise workspace copilot.
 You have real-time read-only access to the company's workspace metrics and data listed below. Use this data whenever appropriate to provide highly contextual, informative, and precise responses.
 
 CURRENT ORGANIZATION DETAILS:
@@ -1925,7 +1993,7 @@ GUIDELINES:
       }
 
       const response = await aiInstance.models.generateContent({
-        model: 'gemini-3.5-flash',
+        model: chosenModel,
         contents: contents,
         config: {
           systemInstruction: systemInstruction,
@@ -1944,9 +2012,10 @@ As a fallback, here is your workspace status:
     }
   } else {
     // Elegant fallback mock copilot response with active guide
-    aiResponseText = `💡 **Gemini AI Integration is ready!** To connect your live assistant, enter your \`GEMINI_API_KEY\` in your environment configuration.
-
-As your **BusinessOS Workspace Copilot (Demo Mode)**, I have analyzed your system:
+    aiResponseText = `💡 **Gemini AI is ready (Demo Mode)!**
+Model Selected: \`${chosenModel}\`
+${customRoleInstruction ? `Role Context: "${customRoleInstruction}"\n` : ''}
+As your **BusinessOS Workspace Copilot**, I analyzed your system:
 - **Organization**: BusinessOS AI Corp
 - **Active Projects**: Cloud Workspace Migration (40% Complete), Enterprise Security Audit (5% Complete)
 - **Active Staff**: Sarah Chen (CTO), Michael Rodriguez (Manager)
@@ -1974,6 +2043,35 @@ apiRouter.get('/ai/chat/:sessionId', (req, res) => {
 
 apiRouter.get('/ai/sessions', (req, res) => {
   res.json({ success: true, data: aiSessions });
+});
+
+apiRouter.post('/ai/sessions', (req, res) => {
+  const { title } = req.body;
+  const newSession = {
+    id: `session-${Date.now()}`,
+    title: title || 'New Chat Session',
+    created_at: new Date().toISOString()
+  };
+  aiSessions.push(newSession);
+  aiHistories[newSession.id] = [
+    { id: `ai-msg-${Date.now()}`, role: 'assistant', content: 'Hello! I am your AI assistant. Select a role and model, and ask me anything.' }
+  ];
+  res.json({ success: true, data: newSession });
+});
+
+apiRouter.delete('/ai/sessions/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  aiSessions = aiSessions.filter(s => s.id !== sessionId);
+  delete aiHistories[sessionId];
+  res.json({ success: true });
+});
+
+apiRouter.delete('/ai/chat/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  aiHistories[sessionId] = [
+    { id: `ai-msg-${Date.now()}`, role: 'assistant', content: 'Hello! I am your AI assistant. Select a role and model, and ask me anything.' }
+  ];
+  res.json({ success: true });
 });
 
 

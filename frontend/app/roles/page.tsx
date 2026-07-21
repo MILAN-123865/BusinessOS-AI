@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { AppLayout } from '@/components/layout/app-layout'
 import { useAuthStore } from '@/store/authStore'
 import {
   useRoles,
@@ -51,7 +50,7 @@ export default function RolesPage() {
   // Access Control: Only Superusers (Admins) can manage roles in this tenant space
   if (user && !user.is_superuser) {
     return (
-      <AppLayout>
+      <>
         <div className="flex h-[70vh] flex-col items-center justify-center gap-4 text-center">
           <Lock size={64} className="text-destructive animate-pulse" />
           <h1 className="text-3xl font-bold tracking-tight">Access Control Warning</h1>
@@ -59,7 +58,7 @@ export default function RolesPage() {
             You do not possess the necessary policies (`roles.manage`) to access the tenant Role-Based Access Control configuration workstation.
           </p>
         </div>
-      </AppLayout>
+      </>
     )
   }
 
@@ -163,7 +162,7 @@ export default function RolesPage() {
   const isLoading = rolesLoading || permsLoading
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -427,6 +426,6 @@ export default function RolesPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }
