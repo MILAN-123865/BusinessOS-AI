@@ -91,8 +91,8 @@ api.interceptors.response.use(
         isRefreshing = false
       }
     }
-    // Mock data for demo/development when backend is unreachable
-    if (!error.response || error.code === 'ERR_NETWORK') {
+    // Mock data for demo/development when backend is unreachable or returns a proxy error (500/502/504)
+    if (!error.response || error.code === 'ERR_NETWORK' || error.response?.status >= 500) {
       const url = error.config?.url || ''
       console.warn(`[Mock] Providing fallback data for ${url}`)
       
@@ -100,8 +100,9 @@ api.interceptors.response.use(
       let mockData: any = []
       
       if (url.includes('/dashboard')) mockData = { metrics: {}, recentActivity: [] }
-      if (url.includes('/analytics')) mockData = { kpis: [], chartData: [], taskDistribution: [] }
-      if (url.includes('/employees') || url.includes('/clients') || url.includes('/roles')) mockData = []
+      else if (url.includes('/dashboard/ai-insights')) mockData = { summary: 'Mock data running', key_metrics: [], alerts: [], opportunities: [] }
+      else if (url.includes('/analytics')) mockData = { kpis: [], chartData: [], taskDistribution: [] }
+      else if (url.includes('/employees') || url.includes('/clients') || url.includes('/roles') || url.includes('/organizations')) mockData = []
       
       return Promise.resolve({ data: { success: true, data: mockData } })
     }
