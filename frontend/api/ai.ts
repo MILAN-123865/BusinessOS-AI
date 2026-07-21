@@ -13,8 +13,10 @@ const simulateDelay = (ms: number) => new Promise(res => setTimeout(res, ms))
 export const sendChatMessageApi = async (data: AIChatRequest): Promise<AIChatResponse> => {
   await simulateDelay(1500) // Simulated AI delay
 
-  if (!mockMessages[data.sessionId]) {
-    mockMessages[data.sessionId] = []
+  const sessionId = data.sessionId || `session-${Date.now()}`
+
+  if (!mockMessages[sessionId]) {
+    mockMessages[sessionId] = []
   }
 
   const userMsg: AIMessage = {
@@ -22,7 +24,6 @@ export const sendChatMessageApi = async (data: AIChatRequest): Promise<AIChatRes
     role: 'user',
     content: data.message,
     timestamp: new Date().toLocaleTimeString(),
-    sessionId: data.sessionId
   }
 
   const aiMsg: AIMessage = {
@@ -30,16 +31,13 @@ export const sendChatMessageApi = async (data: AIChatRequest): Promise<AIChatRes
     role: 'assistant',
     content: `Here is a simulated response to: "${data.message}"\n\n\`\`\`javascript\nconsole.log("Hello from AI!");\n\`\`\`\n\nI can also format **markdown**!`,
     timestamp: new Date().toLocaleTimeString(),
-    sessionId: data.sessionId
   }
 
-  mockMessages[data.sessionId].push(userMsg, aiMsg)
+  mockMessages[sessionId].push(userMsg, aiMsg)
 
   return {
-    success: true,
-    message: aiMsg.content,
-    sessionId: data.sessionId,
-    usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 }
+    message: aiMsg,
+    sessionId: sessionId
   }
 }
 

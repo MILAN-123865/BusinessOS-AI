@@ -356,7 +356,7 @@ export default function AIChatbotPage() {
                           {session.title || 'Untitled Session'}
                         </span>
                         <span className="text-[10px] text-muted-foreground mt-0.5">
-                          {session.created_at ? format(new Date(session.created_at), 'MMM d, h:mm a') : 'Recent'}
+                          {session.createdAt ? format(new Date(session.createdAt), 'MMM d, h:mm a') : 'Recent'}
                         </span>
                       </div>
 

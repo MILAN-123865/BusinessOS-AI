@@ -100,7 +100,7 @@ api.interceptors.response.use(
       let mockData: any = []
       
       if (url.includes('/dashboard/overview')) mockData = { metrics: {}, recentActivity: [] }
-      else if (url.includes('/dashboard/ai-insights')) mockData = { summary: 'Mock data running', key_metrics: [], alerts: [], opportunities: [] }
+      else if (url.includes('/dashboard/ai-insights')) mockData = { summary: 'Mock data running', trends: [], recommendations: [] }
       else if (url.includes('/dashboard/activities')) mockData = []
       else if (url.includes('/dashboard/events')) mockData = []
       else if (url.includes('/dashboard/notifications')) mockData = []
