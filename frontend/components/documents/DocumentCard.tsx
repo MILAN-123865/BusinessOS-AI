@@ -156,7 +156,7 @@ export function DocumentCard({
 
       {/* Footer Info */}
       <div className="mt-4 pt-3 border-t border-border/20 flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>Owner: {document.owner ? `${document.owner.first_name} ${document.owner.last_name[0]}.` : 'Guest'}</span>
+        <span>Owner: {document.owner ? `${document.owner.first_name} ${document.owner.last_name?.[0] || ''}.` : 'Guest'}</span>
         <span>{new Date(document.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
       </div>
     </motion.div>

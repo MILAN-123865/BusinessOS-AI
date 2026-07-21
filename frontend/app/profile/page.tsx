@@ -65,7 +65,7 @@ export default function ProfilePage() {
 
   const getInitials = () => {
     if (!user) return 'U'
-    return `${user.first_name[0] || ''}${user.last_name[0] || ''}`.toUpperCase()
+    return `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
   }
 
   return (

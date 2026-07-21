@@ -120,7 +120,7 @@ export function ChatWindow({ channel, currentUserId }: ChatWindowProps) {
                   <div className="w-8 shrink-0">
                     {showAvatar ? (
                       <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-accent">
-                        {msg.sender.first_name[0]}{msg.sender.last_name[0]}
+                        {msg.sender.first_name?.[0]}{msg.sender.last_name?.[0]}
                       </div>
                     ) : null}
                   </div>
