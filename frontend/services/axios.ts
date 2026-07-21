@@ -99,8 +99,11 @@ api.interceptors.response.use(
       // Generic mock response
       let mockData: any = []
       
-      if (url.includes('/dashboard')) mockData = { metrics: {}, recentActivity: [] }
+      if (url.includes('/dashboard/overview')) mockData = { metrics: {}, recentActivity: [] }
       else if (url.includes('/dashboard/ai-insights')) mockData = { summary: 'Mock data running', key_metrics: [], alerts: [], opportunities: [] }
+      else if (url.includes('/dashboard/activities')) mockData = []
+      else if (url.includes('/dashboard/events')) mockData = []
+      else if (url.includes('/dashboard/notifications')) mockData = []
       else if (url.includes('/analytics')) mockData = { kpis: [], chartData: [], taskDistribution: [] }
       else if (url.includes('/employees') || url.includes('/clients') || url.includes('/roles') || url.includes('/organizations')) mockData = []
       
