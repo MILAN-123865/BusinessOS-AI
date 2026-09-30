@@ -4,11 +4,25 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { TrendingUp, Users, FolderOpen, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import {
+  TrendingUp,
+  Users,
+  FolderOpen,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  ArrowRight,
+  DollarSign,
+  ShoppingCart,
+  RefreshCw,
+} from 'lucide-react'
+import Link from 'next/link'
 import { useDashboardOverview, useRecentActivities, useUpcomingEvents } from '@/hooks/useDashboard'
 import { DashboardCharts } from '@/components/dashboard/dashboard-charts'
 import { DashboardWidgets } from '@/components/calendar/DashboardWidgets'
-
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -16,46 +30,52 @@ const containerVariants = {
     opacity: 1,
     transition: {
       staggerChildren: 0.04,
-      delayChildren: 0.1,
+      delayChildren: 0.04,
     },
   },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
+  hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: 'easeOut' },
+    transition: { duration: 0.25, ease: 'easeOut' as const },
   },
 }
 
 const getEventIcon = (type: string) => {
   switch (type) {
-    case 'meeting': return Clock
-    case 'review': return AlertCircle
-    default: return CheckCircle2
+    case 'meeting':
+      return Clock
+    case 'review':
+      return AlertCircle
+    default:
+      return CheckCircle2
   }
 }
 
 const getActivityIcon = (type: string) => {
   switch (type) {
-    case 'project': return FolderOpen
-    case 'employee': return Users
-    default: return CheckCircle2
+    case 'project':
+      return FolderOpen
+    case 'employee':
+      return Users
+    default:
+      return CheckCircle2
   }
 }
 
 export default function DashboardPage() {
-  const { data: overview, isLoading: overviewLoading, isError: overviewError, refetch } = useDashboardOverview()
+  const { data: overview, isLoading: overviewLoading, isError: overviewError, refetch, isFetching } = useDashboardOverview()
   const { data: activities = [], isLoading: activitiesLoading } = useRecentActivities()
   const { data: events = [], isLoading: eventsLoading } = useUpcomingEvents()
 
   const formatKpiValue = (key: string, val: number) => {
-    if (key === 'revenue') {
-      return `$${val.toLocaleString()}`
+    if (key.includes('revenue') || key.includes('profit') || key.includes('expenses')) {
+      return `$${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
     }
-    return val.toLocaleString()
+    return Number(val || 0).toLocaleString()
   }
 
   const isLoading = overviewLoading || activitiesLoading || eventsLoading
@@ -66,49 +86,75 @@ export default function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="space-y-8"
+        className="space-y-6"
       >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        {/* Dashboard Header */}
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#E5E7EB] pb-5"
+        >
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-            <p className="mt-2 text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening across your business.</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
+                Dashboard Overview
+              </h1>
+              <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-[#16A34A] border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+                Live System
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Real-time enterprise metrics, workspace activities, and performance telemetry.
+            </p>
           </div>
-          {overviewError && (
+
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => refetch()}
-              className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20 transition-all"
+              disabled={isFetching}
+              className="flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#6B7280] hover:text-[#111827] hover:border-[#4F46E5]/40 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
+              title="Refresh Data"
             >
-              Retry Connection
+              <RefreshCw size={13} className={isFetching ? 'animate-spin text-[#4F46E5]' : ''} />
+              <span>{isFetching ? 'Syncing...' : 'Sync Data'}</span>
             </button>
-          )}
+            <Link
+              href="/tasks"
+              className="flex items-center gap-1.5 rounded-xl bg-[#4F46E5] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#4338CA] transition-all"
+            >
+              <Plus size={14} />
+              <span>Create Task</span>
+            </Link>
+          </div>
         </motion.div>
 
-        {/* Loading Skeletons */}
+        {/* Loading State */}
         {isLoading ? (
-          <div className="space-y-8">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-32 rounded-xl bg-card/40 animate-pulse border border-border/40" />
+                <div key={i} className="h-28 rounded-xl bg-white animate-pulse border border-[#E5E7EB]" />
               ))}
             </div>
             <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40" />
-              <div className="h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40" />
+              <div className="lg:col-span-2 h-[360px] rounded-xl bg-white animate-pulse border border-[#E5E7EB]" />
+              <div className="h-[360px] rounded-xl bg-white animate-pulse border border-[#E5E7EB]" />
             </div>
           </div>
         ) : overviewError ? (
-          <div className="flex h-96 flex-col items-center justify-center gap-4 rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
-            <AlertCircle size={48} className="text-destructive animate-bounce" />
-            <h3 className="text-xl font-bold text-foreground">API Connection Failure</h3>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Unable to connect to FastAPI workstation to fetch overview telemetry. Ensure the backend instance is running and fully initialized.
-            </p>
+          <div className="flex h-96 flex-col items-center justify-center gap-4 rounded-xl border border-red-200 bg-red-50/50 p-8 text-center">
+            <AlertCircle size={40} className="text-[#DC2626]" />
+            <div>
+              <h3 className="text-base font-bold text-[#111827]">Backend Offline</h3>
+              <p className="max-w-md text-xs text-[#6B7280] mt-1">
+                Unable to fetch live telemetry. Ensure backend is running on port 8000.
+              </p>
+            </div>
             <button
               onClick={() => refetch()}
-              className="rounded-xl bg-primary/20 px-6 py-2 font-semibold text-accent hover:bg-primary/30 border border-accent/20 transition-all"
+              className="rounded-xl bg-[#4F46E5] px-4 py-2 text-xs font-semibold text-white hover:bg-[#4338CA] transition-all cursor-pointer"
             >
-              Refresh Workstation
+              Retry Connection
             </button>
           </div>
         ) : (
@@ -116,40 +162,58 @@ export default function DashboardPage() {
             {/* KPI Cards */}
             <motion.div
               variants={containerVariants}
-              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
             >
               {overview?.metrics &&
-                Object.entries(overview.metrics).map(([key, metric]: [string, any]) => {
-                  const Icon = key === 'active_employees' ? Users : key === 'active_projects' ? FolderOpen : key === 'completed_tasks' ? CheckCircle2 : TrendingUp
+                Object.entries(overview.metrics).slice(0, 4).map(([key, metric]: [string, any]) => {
+                  const getKpiConfig = (k: string) => {
+                    if (k.includes('user') || k.includes('employee')) {
+                      return { icon: Users, color: 'text-[#4F46E5]', bg: 'bg-indigo-50' }
+                    }
+                    if (k.includes('revenue') || k.includes('profit')) {
+                      return { icon: DollarSign, color: 'text-[#16A34A]', bg: 'bg-emerald-50' }
+                    }
+                    if (k.includes('order')) {
+                      return { icon: ShoppingCart, color: 'text-[#D97706]', bg: 'bg-amber-50' }
+                    }
+                    return { icon: FolderOpen, color: 'text-blue-600', bg: 'bg-blue-50' }
+                  }
+
+                  const config = getKpiConfig(key)
+                  const Icon = config.icon
                   const isUp = metric.trend === 'up'
+
                   return (
                     <motion.div
                       key={key}
                       variants={itemVariants}
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      transition={{ duration: 0.2 }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.15 }}
                     >
-                      <Card className="overflow-hidden border-border/40 bg-card/30 backdrop-blur-md transition-all duration-200 hover:shadow-lg hover:border-accent/30">
-                        <CardContent className="p-6">
+                      <Card className="bg-white border-[#E5E7EB]">
+                        <CardContent className="p-5">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
-                              <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
-                              <p className="text-3xl font-bold">{formatKpiValue(key, metric.value)}</p>
-                              <div className="pt-2">
+                              <p className="text-xs font-medium text-[#6B7280]">{metric.title}</p>
+                              <p className="text-2xl font-bold tracking-tight text-[#111827]">
+                                {formatKpiValue(key, metric.value)}
+                              </p>
+                              <div className="pt-1 flex items-center gap-1.5">
                                 <Badge
-                                  className={`border-0 flex items-center gap-1 w-fit ${
+                                  className={`border-0 flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 ${
                                     isUp
-                                      ? 'bg-emerald-500/10 text-emerald-400'
-                                      : 'bg-destructive/10 text-destructive'
+                                      ? 'bg-emerald-50 text-[#16A34A]'
+                                      : 'bg-red-50 text-[#DC2626]'
                                   }`}
                                 >
-                                  {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                  {isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                                   <span>{isUp ? '+' : ''}{metric.change}%</span>
                                 </Badge>
+                                <span className="text-[10px] text-[#6B7280]">vs last month</span>
                               </div>
                             </div>
-                            <div className="rounded-lg bg-primary/20 p-3">
-                              <Icon size={24} className="text-accent" />
+                            <div className={`rounded-xl ${config.bg} p-2.5`}>
+                              <Icon size={20} className={config.color} />
                             </div>
                           </div>
                         </CardContent>
@@ -159,86 +223,130 @@ export default function DashboardPage() {
                 })}
             </motion.div>
 
-            {/* Calendar & Meeting Management Quick telemetry */}
+            {/* Quick Summary Widgets */}
             <motion.div variants={itemVariants}>
               <DashboardWidgets />
             </motion.div>
 
             {/* Charts Section */}
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold tracking-tight text-[#111827]">
+                  Portfolio & Headcount Trends
+                </h2>
+                <Link
+                  href="/analytics"
+                  className="flex items-center gap-1 text-xs font-semibold text-[#4F46E5] hover:underline"
+                >
+                  <span>Full Analytics</span>
+                  <ArrowRight size={13} />
+                </Link>
+              </div>
               {overview?.charts ? (
                 <DashboardCharts data={overview.charts} />
               ) : (
-                <div className="h-[400px] rounded-xl bg-card/40 animate-pulse border border-border/40 flex items-center justify-center">
-                  <span className="text-muted-foreground">Loading charts...</span>
+                <div className="h-72 rounded-xl bg-white animate-pulse border border-[#E5E7EB] flex items-center justify-center">
+                  <span className="text-xs text-[#6B7280]">Loading chart analytics...</span>
                 </div>
               )}
             </motion.div>
 
-            {/* Content Grid */}
+            {/* Activities & Upcoming Calendar */}
             <motion.div
               variants={containerVariants}
               className="grid gap-6 lg:grid-cols-3"
             >
-              {/* Recent Activity */}
+              {/* Recent Activities */}
               <motion.div variants={itemVariants} className="lg:col-span-2">
-                <Card className="border-border/40 bg-card/30 backdrop-blur-md">
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Latest updates from your team</CardDescription>
+                <Card className="bg-white border-[#E5E7EB]">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <div>
+                      <CardTitle className="text-sm font-semibold tracking-tight text-[#111827]">
+                        Recent Activity
+                      </CardTitle>
+                      <CardDescription className="text-xs text-[#6B7280]">
+                        Real-time audit log & user actions
+                      </CardDescription>
+                    </div>
+                    <Link
+                      href="/settings"
+                      className="text-xs font-medium text-[#4F46E5] hover:underline"
+                    >
+                      View All
+                    </Link>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {activities.map((activity) => {
+                  <CardContent className="space-y-2.5">
+                    {activities.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-[#6B7280]">
+                        No recent activities recorded.
+                      </div>
+                    ) : (
+                      activities.map((activity) => {
                         const Icon = getActivityIcon(activity.type)
                         return (
                           <div
                             key={activity.id}
-                            className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/40 p-4 transition-all hover:bg-card/60"
+                            className="flex items-start gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 transition-all hover:bg-white hover:border-[#D1D5DB]"
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-                              <Icon size={20} className="text-accent" />
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[#4F46E5]">
+                              <Icon size={16} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-foreground truncate">{activity.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{activity.description}</p>
-                              <p className="text-xs text-muted-foreground/60 mt-1">By {activity.user}</p>
+                              <p className="font-semibold text-xs text-[#111827] truncate">{activity.title}</p>
+                              <p className="text-[11px] text-[#6B7280] line-clamp-1 mt-0.5">{activity.description}</p>
+                              <p className="text-[10px] text-[#9CA3AF] mt-0.5">By {activity.user}</p>
                             </div>
-                            <span className="text-xs text-muted-foreground shrink-0">{activity.timestamp}</span>
+                            <span className="text-[10px] font-medium text-[#6B7280] shrink-0">{activity.timestamp}</span>
                           </div>
                         )
-                      })}
-                    </div>
+                      })
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
 
-              {/* Upcoming Events */}
+              {/* Upcoming Schedule */}
               <motion.div variants={itemVariants}>
-                <Card className="border-border/40 bg-card/30 backdrop-blur-md">
-                  <CardHeader>
-                    <CardTitle>Upcoming Events</CardTitle>
-                    <CardDescription>Next 7 days timeline</CardDescription>
+                <Card className="bg-white border-[#E5E7EB]">
+                  <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <div>
+                      <CardTitle className="text-sm font-semibold tracking-tight text-[#111827]">
+                        Upcoming Events
+                      </CardTitle>
+                      <CardDescription className="text-xs text-[#6B7280]">
+                        Meetings & milestones
+                      </CardDescription>
+                    </div>
+                    <Link
+                      href="/calendar"
+                      className="text-xs font-medium text-[#4F46E5] hover:underline"
+                    >
+                      Calendar
+                    </Link>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {events.map((event) => {
+                  <CardContent className="space-y-2.5">
+                    {events.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-[#6B7280]">
+                        No upcoming events.
+                      </div>
+                    ) : (
+                      events.map((event) => {
                         const Icon = getEventIcon(event.type)
                         return (
                           <div
                             key={event.id}
-                            className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/40 p-3 transition-all hover:bg-card/60"
+                            className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-2.5 transition-all hover:bg-white hover:border-[#D1D5DB]"
                           >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/25">
-                              <Icon size={16} className="text-accent" />
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[#4F46E5]">
+                              <Icon size={15} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                Organizer: {event.organizer}
+                              <p className="text-xs font-semibold text-[#111827] truncate">{event.title}</p>
+                              <p className="text-[10px] text-[#6B7280] truncate mt-0.5">
+                                Type: {event.type}
                               </p>
                             </div>
-                            <Badge className="bg-primary/20 text-accent border-0 text-xs font-semibold">
+                            <Badge className="bg-slate-100 text-[#6B7280] border border-[#E5E7EB] text-[10px] font-semibold shrink-0">
                               {new Date(event.date).toLocaleDateString(undefined, {
                                 month: 'short',
                                 day: 'numeric',
@@ -246,8 +354,8 @@ export default function DashboardPage() {
                             </Badge>
                           </div>
                         )
-                      })}
-                    </div>
+                      })
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

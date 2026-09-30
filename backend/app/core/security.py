@@ -5,19 +5,17 @@ from typing import Any
 
 import jwt
 from jwt import InvalidTokenError
-from pwdlib import PasswordHash
+import bcrypt
 
 from app.config.settings import settings
 
 
-password_hash = PasswordHash.recommended()
-
-
 def get_password_hash(password: str) -> str:
     """
-    Hash a plaintext password using the recommended algorithm.
+    Hash a plaintext password using bcrypt algorithm.
     """
-    return password_hash.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(
@@ -27,10 +25,13 @@ def verify_password(
     """
     Verify a plaintext password against its hashed value.
     """
-    return password_hash.verify(
-        plain_password,
-        hashed_password,
-    )
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 def _encode_token(payload: dict[str, Any], secret_key: str) -> str:

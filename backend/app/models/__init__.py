@@ -16,3 +16,4 @@ from app.models.hr import LeaveRequest, Attendance
 from app.models.finance import Invoice, Expense
 from app.models.performance import PerformanceReview
 from app.models.ai import AIChatSession, AIMessage
+from app.models.commerce import Product, Order, Inventory, AnalyticsData

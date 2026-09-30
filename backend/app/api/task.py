@@ -1,6 +1,8 @@
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from uuid import UUID
 from sqlalchemy.future import select
+from sqlalchemy import desc, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies.database import get_db_session
@@ -28,26 +30,44 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.get("", response_model=TaskListEnvelope)
 async def list_tasks(
+    limit: Optional[int] = 200,
+    offset: Optional[int] = 0,
+    status_filter: Optional[str] = None,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
-    result = await db.execute(
-        select(Task)
-        .where(Task.organization_id == current_user.organization_id)
-        .options(
-            selectinload(Task.project),
-            selectinload(Task.assignee),
-            selectinload(Task.comments).selectinload(TaskComment.user),
-            selectinload(Task.subtasks)
+    try:
+        stmt = (
+            select(Task)
+            .where(Task.organization_id == current_user.organization_id)
+            .order_by(desc(Task.created_at))
+            .options(
+                selectinload(Task.project),
+                selectinload(Task.assignee),
+                selectinload(Task.comments).selectinload(TaskComment.user),
+                selectinload(Task.subtasks)
+            )
         )
-    )
-    tasks = result.scalars().all()
-    return {
-        "success": True,
-        "message": "Tasks retrieved successfully.",
-        "data": [TaskResponse.model_validate(t) for t in tasks],
-        "errors": None
-    }
+        if status_filter and status_filter.lower() != "all":
+            stmt = stmt.where(func.lower(Task.status) == status_filter.lower())
+        if limit:
+            stmt = stmt.limit(limit).offset(offset or 0)
+
+        result = await db.execute(stmt)
+        tasks = result.scalars().all()
+        return {
+            "success": True,
+            "message": "Tasks retrieved successfully.",
+            "data": [TaskResponse.model_validate(t) for t in tasks],
+            "errors": None
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listing tasks: {str(e)}"
+        )
 
 @router.get("/{task_id}", response_model=TaskEnvelope)
 async def get_task(

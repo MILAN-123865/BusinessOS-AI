@@ -18,115 +18,64 @@ async def get_analytics_data(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
+    from app.models.commerce import AnalyticsData
     
-    # Simple Period filtering (for demonstration, we'll calculate 12 months chart anyway)
-    # 1. Total Revenue (sum of all paid invoices)
-    res_rev = await db.execute(select(func.sum(Invoice.amount)).where(Invoice.status == 'Paid'))
-    total_revenue = res_rev.scalar() or 0
-
-    # 2. Total Expenses
-    res_exp = await db.execute(select(func.sum(Expense.amount)))
-    total_expenses = res_exp.scalar() or 0
-
-    # 3. Employee Growth
-    res_emp = await db.execute(select(func.count(User.id)).where(User.is_active == True))
-    total_employees = res_emp.scalar() or 0
-
-    # 4. Task Completion Rate
-    res_tasks_total = await db.execute(select(func.count(Task.id)))
-    tasks_total = res_tasks_total.scalar() or 1
-    res_tasks_done = await db.execute(select(func.count(Task.id)).where(Task.status == 'Completed'))
-    tasks_done = res_tasks_done.scalar() or 0
-    task_completion = round((tasks_done / tasks_total) * 100) if tasks_total > 0 else 0
-
-    # Monthly chart data (Last 6 months)
-    chart_data = []
-    today = datetime.now(timezone.utc)
-    for i in range(5, -1, -1):
-        target_date = today - timedelta(days=i * 30)
-        start_of_month = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_of_month = start_of_month.replace(
-            day=calendar.monthrange(start_of_month.year, start_of_month.month)[1],
-            hour=23, minute=59, second=59
-        )
-        
-        # Revenue for month
-        rev_m = await db.execute(
-            select(func.sum(Invoice.amount))
-            .where(Invoice.status == 'Paid')
-            .where(Invoice.issue_date >= start_of_month.date())
-            .where(Invoice.issue_date <= end_of_month.date())
-        )
-        rm = rev_m.scalar() or 0
-        
-        # Expenses for month
-        exp_m = await db.execute(
-            select(func.sum(Expense.amount))
-            .where(Expense.expense_date >= start_of_month.date())
-            .where(Expense.expense_date <= end_of_month.date())
-        )
-        em = exp_m.scalar() or 0
-
-        month_name = start_of_month.strftime("%b")
-        chart_data.append({
-            "month": month_name,
-            "revenue": float(rm),
-            "expenses": float(em),
-            "profit": float(rm - em)
-        })
-
-    # Task Distribution
-    res_dist = await db.execute(
-        select(Task.status, func.count(Task.id)).group_by(Task.status)
-    )
-    task_dist = res_dist.all()
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
     
-    status_colors = {
-        "To Do": "#ef4444",
-        "In Progress": "#f59e0b",
-        "Review": "#3b82f6",
-        "Completed": "#10b981"
-    }
+    # Get today's stats
+    today_stats = (await db.execute(select(AnalyticsData).where(AnalyticsData.date == today))).scalar_one_or_none()
     
-    distribution_data = []
-    for t_status, t_count in task_dist:
-        distribution_data.append({
-            "name": t_status,
-            "value": round((t_count / tasks_total) * 100) if tasks_total > 0 else 0,
-            "fill": status_colors.get(t_status, "#8884d8")
-        })
+    # Get weekly stats
+    weekly_stats = (await db.execute(
+        select(
+            func.sum(AnalyticsData.daily_sales),
+            func.sum(AnalyticsData.revenue), 
+            func.sum(AnalyticsData.expenses), 
+            func.sum(AnalyticsData.profit)
+        ).where(AnalyticsData.date >= week_ago)
+    )).first()
+
+    # Get monthly stats
+    monthly_stats = (await db.execute(
+        select(
+            func.sum(AnalyticsData.daily_sales),
+            func.sum(AnalyticsData.revenue), 
+            func.sum(AnalyticsData.expenses), 
+            func.sum(AnalyticsData.profit),
+            func.sum(AnalyticsData.visitors)
+        ).where(AnalyticsData.date >= month_ago)
+    )).first()
+
+    # Get latest traffic, country, device stats (or merge them, but let's just grab the latest)
+    latest_stats = (await db.execute(select(AnalyticsData).order_by(AnalyticsData.date.desc()).limit(1))).scalar_one_or_none()
+    
+    chart_res = await db.execute(select(AnalyticsData).order_by(AnalyticsData.date.desc()).limit(30))
+    chart_data = list(chart_res.scalars().all())
+    chart_data.reverse()
+    formatted_chart_data = [
+        {"name": d.date.strftime("%b %d"), "revenue": float(d.revenue), "expenses": float(d.expenses), "profit": float(d.profit)}
+        for d in chart_data
+    ]
 
     return {
         "success": True,
         "message": "Analytics fetched successfully.",
         "data": {
-            "kpis": [
-                {
-                    "label": "Total Revenue",
-                    "value": f"${total_revenue:,.0f}",
-                    "change": "+12.5%", # Hardcoded change for now
-                    "trend": "up"
-                },
-                {
-                    "label": "Active Employees",
-                    "value": str(total_employees),
-                    "change": "+5.2%",
-                    "trend": "up"
-                },
-                {
-                    "label": "Task Completion",
-                    "value": f"{task_completion}%",
-                    "change": "+2.1%",
-                    "trend": "up"
-                },
-                {
-                    "label": "Net Profit",
-                    "value": f"${(total_revenue - total_expenses):,.0f}",
-                    "change": "-1.4%",
-                    "trend": "down"
-                }
-            ],
-            "chartData": chart_data,
-            "taskDistribution": distribution_data
-        }
+            "daily_sales": float(today_stats.daily_sales) if today_stats else 0,
+            "weekly_sales": float(weekly_stats[0] or 0),
+            "monthly_sales": float(monthly_stats[0] or 0),
+            "revenue": float(monthly_stats[1] or 0),
+            "expenses": float(monthly_stats[2] or 0),
+            "profit": float(monthly_stats[3] or 0),
+            "visitors": int(monthly_stats[4] or 0),
+            "conversion_rate": float(latest_stats.conversion_rate) if latest_stats else 0.0,
+            "traffic_sources": latest_stats.traffic_sources if latest_stats else {},
+            "country_statistics": latest_stats.country_statistics if latest_stats else {},
+            "device_statistics": latest_stats.device_statistics if latest_stats else {},
+            "charts_data": formatted_chart_data
+        },
+        "errors": None
     }

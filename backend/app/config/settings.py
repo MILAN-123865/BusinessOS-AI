@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------
     # Database (PostgreSQL, async via asyncpg)
     # -------------------------------------------------------------------
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: str
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
     DATABASE_POOL_TIMEOUT: int = 30
@@ -108,15 +108,33 @@ class Settings(BaseSettings):
     # NOTE: this is the single source of truth for CORS origins.
     # main.py must reference `settings.CORS_ALLOWED_ORIGINS`, not
     # `BACKEND_CORS_ORIGINS` (that field does not exist here).
-    CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list)
+    CORS_ALLOWED_ORIGINS: List[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+    )
     CORS_ALLOW_CREDENTIALS: bool = True
 
     @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: str | List[str]) -> List[str]:
-        """Allow CORS origins to be provided as a comma-separated string."""
+        """Allow CORS origins to be provided as a JSON list or comma-separated string."""
+        import json
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            value = value.strip()
+            if value.startswith("[") and value.endswith("]"):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        return [str(origin).strip() for origin in parsed if str(origin).strip()]
+                except Exception:
+                    pass
+            return [origin.strip() for origin in value.replace("[", "").replace("]", "").replace('"', "").replace("'", "").split(",") if origin.strip()]
         return value
 
     # -------------------------------------------------------------------
@@ -147,6 +165,17 @@ class Settings(BaseSettings):
     # Frontend (used to build links in transactional emails)
     # -------------------------------------------------------------------
     FRONTEND_URL: AnyHttpUrl = "http://localhost:3000"  # type: ignore[assignment]
+
+    # -------------------------------------------------------------------
+    # AI Providers
+    # -------------------------------------------------------------------
+    OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    OLLAMA_URL: str = "http://localhost:11434"
+    DEFAULT_AI_PROVIDER: Literal["auto", "openai", "gemini", "groq", "ollama", "fallback"] = "auto"
+    DEFAULT_AI_MODEL: str = "auto"
 
     @property
     def is_production(self) -> bool:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -26,8 +26,8 @@ class UserBase(BaseModel):
     )
     phone_number: Optional[str] = Field(
         None, 
-        max_length=20, 
-        description="Optional contact number formatted in E.164."
+        max_length=50, 
+        description="Optional contact number formatted in E.164 or international extension."
     )
     is_active: bool = Field(
         True, 
@@ -49,6 +49,22 @@ class UserBase(BaseModel):
         default_factory=list,
         description="List of role names."
     )
+
+    @field_validator("roles", mode="before")
+    @classmethod
+    def parse_roles(cls, v: Any) -> List[str]:
+        if not v:
+            return []
+        result = []
+        for item in v:
+            if isinstance(item, str):
+                result.append(item)
+            elif hasattr(item, "name"):
+                result.append(item.name)
+            elif isinstance(item, dict) and "name" in item:
+                result.append(item["name"])
+        return result
+
 
 
 # ==============================================================================
@@ -85,7 +101,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    phone_number: Optional[str] = Field(None, max_length=20)
+    phone_number: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=8, max_length=128)
     organization_id: Optional[UUID] = None

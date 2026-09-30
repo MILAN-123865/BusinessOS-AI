@@ -56,6 +56,7 @@ export interface Document {
   storage_path: string
   download_url: string
   preview_url?: string
+  downloads?: number
   created_at: string
   updated_at: string
   // Optional associations

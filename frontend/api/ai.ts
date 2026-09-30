@@ -15,3 +15,7 @@ export const getChatSessionsApi = async (): Promise<AIChatSession[]> => {
   const response = await api.get<{ success: boolean; data: AIChatSession[] }>('/ai/sessions')
   return response.data.data
 }
+
+export const deleteChatSessionApi = async (sessionId: string): Promise<void> => {
+  await api.delete(`/ai/sessions/${sessionId}`)
+}

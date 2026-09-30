@@ -106,7 +106,7 @@ export default function ClientsPage() {
     handleSubmit: handleClientSubmit,
     reset: resetClient,
     formState: { errors: clientErrors },
-  } = useForm<ClientFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       company_name: '',
@@ -133,7 +133,7 @@ export default function ClientsPage() {
     handleSubmit: handleContactSubmit,
     reset: resetContact,
     formState: { errors: contactErrors },
-  } = useForm<ContactFormValues>({
+  } = useForm<any>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
       name: '',

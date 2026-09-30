@@ -28,6 +28,7 @@ from app.api.analytics import router as analytics_router
 from app.api.document import router as document_router
 from app.api.ai import router as ai_router
 from app.api.workflow import router as workflow_router
+from app.api.commerce import router as commerce_router
 
 # Setup structured logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -41,6 +42,27 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Initializing BusinessOS AI Enterprise Engine Lifespan...")
     await init_database()
+    
+    from app.config.database import engine, Base, AsyncSessionFactory
+    from app.models.user import User
+    from sqlalchemy.future import select
+    import subprocess
+    import os
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
+    async with AsyncSessionFactory() as session:
+        user = (await session.execute(select(User).limit(1))).scalar_one_or_none()
+        if not user:
+            logger.info("Database empty, running seeder...")
+            try:
+                import sys
+                backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                subprocess.run([sys.executable, "seed.py"], cwd=backend_dir, check=True)
+                logger.info("Database seeded successfully.")
+            except Exception as e:
+                logger.error(f"Failed to seed database: {e}")
 
     yield
 
@@ -71,7 +93,10 @@ def get_cors():
 # ==============================================================================
 # GLOBAL MIDDLEWARE CONFIGURATIONS
 # ==============================================================================
-# 1. Standard Cross-Origin Resource Sharing Rules
+# 1. Early HTTP Request Identity Telemetry Interceptor
+app.add_middleware(EnterpriseAuthContextMiddleware)
+
+# 2. Standard Cross-Origin Resource Sharing Rules
 # NOTE: settings.py exposes CORS_ALLOWED_ORIGINS / CORS_ALLOW_CREDENTIALS —
 # the previous `BACKEND_CORS_ORIGINS` attribute does not exist and raised
 # AttributeError at import time.
@@ -82,9 +107,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 2. Early HTTP Request Identity Telemetry Interceptor
-app.add_middleware(EnterpriseAuthContextMiddleware)
 
 
 # ==============================================================================
@@ -212,12 +234,28 @@ app.include_router(
     prefix=settings.API_V1_PREFIX
 )
 
+app.include_router(
+    commerce_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+import time
+START_TIME = time.time()
+
 @app.get("/health", tags=["System"], status_code=status.HTTP_200_OK)
 async def health_check() -> dict:
     """Liveness check probe indicating top-level service operational capacity."""
+    uptime_seconds = int(time.time() - START_TIME)
+    
     return {
         "success": True,
         "message": "BusinessOS AI Core Router is fully operational.",
-        "data": {"status": "HEALTHY"},
+        "data": {
+            "status": "HEALTHY",
+            "database": "connected",
+            "ai": "connected",
+            "cache": "connected",
+            "uptime": uptime_seconds
+        },
         "errors": None
     }

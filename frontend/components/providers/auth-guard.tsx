@@ -18,7 +18,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const hasRehydrated = useAuthStore.persist.hasHydrated()
     if (!hasRehydrated) return
 
-    const isPublicPath = PUBLIC_PATHS.includes(pathname)
+    const isPublicPath = pathname ? PUBLIC_PATHS.includes(pathname) : false
 
     if (!isAuthenticated || !accessToken) {
       if (!isPublicPath) {

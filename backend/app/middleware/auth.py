@@ -19,10 +19,15 @@ class EnterpriseAuthContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.perf_counter()
 
+        # Always allow CORS preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Public endpoints that do not require authentication
         public_paths = {
             f"{settings.API_V1_PREFIX}/auth/login",
             f"{settings.API_V1_PREFIX}/auth/register",
+            f"{settings.API_V1_PREFIX}/auth/refresh",
             f"{settings.API_V1_PREFIX}/auth/forgot-password",
             f"{settings.API_V1_PREFIX}/openapi.json",
             "/openapi.json",
@@ -31,6 +36,7 @@ class EnterpriseAuthContextMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/redoc/",
             "/health",
+            "/test-cors",
         }
 
         path = request.url.path
@@ -40,6 +46,7 @@ class EnterpriseAuthContextMiddleware(BaseHTTPMiddleware):
             path in public_paths
             or path.startswith("/docs")
             or path.startswith("/redoc")
+            or path.startswith(f"{settings.API_V1_PREFIX}/openapi.json")
         ):
             response = await call_next(request)
             self._apply_telemetry_headers(response, start_time)

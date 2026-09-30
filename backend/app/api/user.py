@@ -31,7 +31,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def create_user(
     payload: UserCreate,
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(check_permissions(["user:create"]))
+    current_user: User = Depends(check_permissions(["employees.manage"]))
 ) -> dict:
     new_user = await service.create_user(schema_in=payload, creator_id=current_user.id)
     return {
@@ -61,7 +61,7 @@ async def list_users(
     sort_by: str = Query("created_at", description="Target engine sort tracking data field column."),
     sort_desc: bool = Query(True, description="Descending sort sequence trigger toggle."),
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(check_permissions(["user:read"]))
+    current_user: User = Depends(get_current_active_user)
 ) -> dict:
     users, total = await service.list_users(
         skip=skip,
@@ -145,7 +145,7 @@ async def get_me(
 async def get_user(
     user_id: UUID,
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(check_permissions(["user:read"]))
+    current_user: User = Depends(get_current_active_user)
 ) -> dict:
     user = await service.get_user_by_id(user_id)
     ur = UserResponse.model_validate(user)
@@ -196,7 +196,7 @@ async def update_user(
     user_id: UUID,
     payload: UserUpdate,
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(check_permissions(["user:update"]))
+    current_user: User = Depends(check_permissions(["employees.manage"]))
 ) -> dict:
     updated_user = await service.update_user(user_id=user_id, schema_in=payload, updater_id=current_user.id)
     return {
@@ -221,7 +221,7 @@ async def update_user(
 async def delete_user(
     user_id: UUID,
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(check_permissions(["user:delete"]))
+    current_user: User = Depends(check_permissions(["employees.manage"]))
 ) -> dict:
     deleted_user = await service.delete_user(user_id=user_id, deleter_id=current_user.id)
     return {

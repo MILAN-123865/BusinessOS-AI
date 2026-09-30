@@ -2,7 +2,7 @@ import { api } from '../services/axios'
 import { DashboardOverviewResponse, Activity, UpcomingEvent, Notification } from '../types/dashboard'
 
 export const getDashboardOverview = async (): Promise<DashboardOverviewResponse> => {
-  const response = await api.get<{ success: boolean; data: DashboardOverviewResponse }>('/dashboard/overview')
+  const response = await api.get<{ success: boolean; data: DashboardOverviewResponse }>('/dashboard')
   return response.data.data
 }
 

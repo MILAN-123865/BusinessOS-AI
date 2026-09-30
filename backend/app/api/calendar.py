@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
+from typing import Optional
+from datetime import datetime
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies.database import get_db_session
 from app.models.calendar import CalendarEvent
@@ -19,19 +21,36 @@ router = APIRouter(prefix="/calendar/events", tags=["Calendar Events"])
 
 @router.get("", response_model=CalendarEventListEnvelope)
 async def list_events(
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
+    event_type: Optional[str] = Query(None),
+    project_id: Optional[UUID] = Query(None),
+    search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
-    result = await db.execute(
-        select(CalendarEvent)
-        .where(CalendarEvent.organization_id == current_user.organization_id)
-        .options(
-            selectinload(CalendarEvent.project),
-            selectinload(CalendarEvent.task),
-            selectinload(CalendarEvent.meeting).selectinload(CalendarEvent.meeting.host)
+    query = select(CalendarEvent).where(CalendarEvent.organization_id == current_user.organization_id)
+    
+    if start:
+        query = query.where(CalendarEvent.end_time >= start)
+    if end:
+        query = query.where(CalendarEvent.start_time <= end)
+    if event_type:
+        query = query.where(CalendarEvent.event_type.ilike(f"%{event_type}%"))
+    if project_id:
+        query = query.where(CalendarEvent.project_id == project_id)
+    if search:
+        query = query.where(
+            or_(
+                CalendarEvent.title.ilike(f"%{search}%"),
+                CalendarEvent.description.ilike(f"%{search}%")
+            )
         )
-    )
+        
+    query = query.order_by(CalendarEvent.start_time.asc())
+    result = await db.execute(query)
     events = result.scalars().all()
+    
     return {
         "success": True,
         "message": "Calendar events retrieved successfully.",
@@ -46,15 +65,9 @@ async def get_event(
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
     result = await db.execute(
-        select(CalendarEvent)
-        .where(CalendarEvent.id == event_id)
-        .options(
-            selectinload(CalendarEvent.project),
-            selectinload(CalendarEvent.task),
-            selectinload(CalendarEvent.meeting).selectinload(CalendarEvent.meeting.host)
-        )
+        select(CalendarEvent).where(CalendarEvent.id == event_id)
     )
-    event = result.scalar()
+    event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found.")
     return {
@@ -71,7 +84,7 @@ async def create_event(
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
     event = CalendarEvent(
-        organization_id=payload.organization_id,
+        organization_id=current_user.organization_id or payload.organization_id,
         title=payload.title,
         description=payload.description,
         event_type=payload.event_type,
@@ -88,17 +101,6 @@ async def create_event(
     await db.commit()
     await db.refresh(event)
     
-    result = await db.execute(
-        select(CalendarEvent)
-        .where(CalendarEvent.id == event.id)
-        .options(
-            selectinload(CalendarEvent.project),
-            selectinload(CalendarEvent.task),
-            selectinload(CalendarEvent.meeting).selectinload(CalendarEvent.meeting.host)
-        )
-    )
-    event = result.scalar()
-    
     return {
         "success": True,
         "message": "Event created successfully.",
@@ -114,15 +116,9 @@ async def update_event(
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
     result = await db.execute(
-        select(CalendarEvent)
-        .where(CalendarEvent.id == event_id)
-        .options(
-            selectinload(CalendarEvent.project),
-            selectinload(CalendarEvent.task),
-            selectinload(CalendarEvent.meeting).selectinload(CalendarEvent.meeting.host)
-        )
+        select(CalendarEvent).where(CalendarEvent.id == event_id)
     )
-    event = result.scalar()
+    event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found.")
         
@@ -146,15 +142,9 @@ async def delete_event(
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
     result = await db.execute(
-        select(CalendarEvent)
-        .where(CalendarEvent.id == event_id)
-        .options(
-            selectinload(CalendarEvent.project),
-            selectinload(CalendarEvent.task),
-            selectinload(CalendarEvent.meeting).selectinload(CalendarEvent.meeting.host)
-        )
+        select(CalendarEvent).where(CalendarEvent.id == event_id)
     )
-    event = result.scalar()
+    event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found.")
         

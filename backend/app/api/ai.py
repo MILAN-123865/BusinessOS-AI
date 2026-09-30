@@ -1,20 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from uuid import UUID, uuid4
-from sqlalchemy.future import select
-from sqlalchemy import func
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
+import logging
+import uuid
+from typing import List, Optional
 from datetime import datetime, timezone
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.future import select
+from sqlalchemy import desc
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.database import get_db_session
+from app.dependencies.auth import get_current_active_user
 from app.models.ai import AIChatSession, AIMessage
 from app.models.user import User
-from app.models.project import Project
-from app.models.task import Task
-from app.models.client import Client
-from app.models.finance import Invoice, Expense
-from app.models.document import Document
-from app.dependencies.auth import get_current_active_user
 from app.schemas.ai import (
     AIChatRequest,
     AIChatResponse,
@@ -22,32 +20,39 @@ from app.schemas.ai import (
     AIMessageResponse,
     AIMessageListEnvelope,
     AIChatSessionResponse,
-    AIChatSessionListEnvelope
+    AIChatSessionListEnvelope,
 )
+from app.services.ai.llm_service import generate_ai_response
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["AI Assistant"])
+
 
 def map_message(msg: AIMessage) -> dict:
     return {
         "id": str(msg.id),
         "role": msg.role,
         "content": msg.content,
-        "timestamp": msg.created_at.strftime("%I:%M %p")
+        "timestamp": msg.created_at.strftime("%I:%M %p") if msg.created_at else datetime.now().strftime("%I:%M %p")
     }
+
 
 def map_session(sess: AIChatSession) -> dict:
     return {
         "id": str(sess.id),
         "title": sess.title,
-        "createdAt": sess.created_at.isoformat(),
-        "updatedAt": sess.updated_at.isoformat()
+        "createdAt": sess.created_at.isoformat() if sess.created_at else datetime.now().isoformat(),
+        "updatedAt": sess.updated_at.isoformat() if sess.updated_at else datetime.now().isoformat()
     }
+
 
 @router.get("/ai/sessions", response_model=AIChatSessionListEnvelope)
 async def list_ai_sessions(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
+    """Retrieve all conversational chat sessions for the logged-in user."""
     result = await db.execute(
         select(AIChatSession)
         .where(AIChatSession.user_id == current_user.id)
@@ -61,21 +66,31 @@ async def list_ai_sessions(
         "errors": None
     }
 
+
 @router.get("/ai/chat/{session_id}", response_model=AIMessageListEnvelope)
 async def get_ai_chat_history(
     session_id: UUID,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
+    """Retrieve full message history for a given session."""
     result = await db.execute(
-        select(AIChatSession).where(AIChatSession.id == session_id, AIChatSession.user_id == current_user.id)
+        select(AIChatSession).where(
+            AIChatSession.id == session_id,
+            AIChatSession.user_id == current_user.id
+        )
     )
-    session = result.scalar()
+    session = result.scalar_one_or_none()
     if not session:
-        raise HTTPException(status_code=404, detail="AI session not found.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI session not found or unauthorized."
+        )
+
     result_msgs = await db.execute(
-        select(AIMessage).where(AIMessage.session_id == session_id).order_by(AIMessage.created_at.asc())
+        select(AIMessage)
+        .where(AIMessage.session_id == session_id)
+        .order_by(AIMessage.created_at.asc())
     )
     messages = result_msgs.scalars().all()
     return {
@@ -85,32 +100,69 @@ async def get_ai_chat_history(
         "errors": None
     }
 
+
+@router.delete("/ai/sessions/{session_id}")
+async def delete_ai_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_active_user)
+) -> dict:
+    """Delete a conversation session and all its messages."""
+    result = await db.execute(
+        select(AIChatSession).where(
+            AIChatSession.id == session_id,
+            AIChatSession.user_id == current_user.id
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI session not found."
+        )
+
+    await db.delete(session)
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": "AI Chat session deleted successfully.",
+        "data": {"sessionId": str(session_id)},
+        "errors": None
+    }
+
+
 @router.post("/ai/chat", response_model=AIChatResponseEnvelope)
 async def send_ai_chat_message(
     payload: AIChatRequest,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
-    session_id = None
+    """Send a prompt to the AI Copilot with multi-turn history and smart tool calling."""
     session = None
-    
+    session_id = None
+
     if payload.sessionId:
         try:
-            session_id = UUID(payload.sessionId)
-            result = await db.execute(
-                select(AIChatSession).where(AIChatSession.id == session_id, AIChatSession.user_id == current_user.id)
+            parsed_id = UUID(payload.sessionId)
+            res = await db.execute(
+                select(AIChatSession).where(
+                    AIChatSession.id == parsed_id,
+                    AIChatSession.user_id == current_user.id
+                )
             )
-            session = result.scalar()
-        except ValueError:
+            session = res.scalar_one_or_none()
+        except (ValueError, TypeError):
             pass
-            
+
     if not session:
         # Create a new session
         session_id = uuid4()
-        title = payload.message[:40] + "..." if len(payload.message) > 40 else payload.message
+        clean_title = payload.message.strip()
+        title = (clean_title[:38] + "...") if len(clean_title) > 38 else clean_title
         session = AIChatSession(
             id=session_id,
-            title=title,
+            title=title or "New Workspace Conversation",
             user_id=current_user.id
         )
         db.add(session)
@@ -119,7 +171,7 @@ async def send_ai_chat_message(
         session.updated_at = datetime.now(timezone.utc)
         session_id = session.id
 
-    # Save user message
+    # 1. Save user message to database
     user_msg = AIMessage(
         id=uuid4(),
         session_id=session_id,
@@ -129,74 +181,31 @@ async def send_ai_chat_message(
     db.add(user_msg)
     await db.flush()
 
-    # Generate smart, database-aware response
-    message_text = payload.message.lower()
-    db_context = ""
-    
-    # 1. Employees / Users
-    if "employee" in message_text or "user" in message_text or "staff" in message_text or "people" in message_text:
-        res_emp = await db.execute(select(func.count(User.id)).where(User.is_active == True))
-        emp_count = res_emp.scalar() or 0
-        db_context += f"• **Employees**: We currently have **{emp_count}** active staff members registered in the organization database.\n"
-        
-    # 2. Projects
-    if "project" in message_text:
-        res_proj = await db.execute(select(Project.status, func.count(Project.id)).group_by(Project.status))
-        proj_counts = res_proj.all()
-        proj_lines = [f"{status}: {count}" for status, count in proj_counts]
-        total_p = sum(c[1] for c in proj_counts)
-        db_context += f"• **Projects**: We have **{total_p}** projects total. Breakdown: {', '.join(proj_lines)}.\n"
-        
-    # 3. Tasks
-    if "task" in message_text or "todo" in message_text or "to-do" in message_text:
-        res_task = await db.execute(select(Task.status, func.count(Task.id)).group_by(Task.status))
-        task_counts = res_task.all()
-        task_lines = [f"{status}: {count}" for status, count in task_counts]
-        total_t = sum(c[1] for c in task_counts)
-        db_context += f"• **Tasks**: We have **{total_t}** tasks total. Breakdown: {', '.join(task_lines)}.\n"
-        
-    # 4. Clients
-    if "client" in message_text or "customer" in message_text:
-        res_client = await db.execute(select(func.count(Client.id)))
-        client_count = res_client.scalar() or 0
-        db_context += f"• **Clients**: We have **{client_count}** client profiles linked in our workspace.\n"
-        
-    # 5. Financials
-    if "revenue" in message_text or "finance" in message_text or "profit" in message_text or "expense" in message_text or "invoice" in message_text:
-        res_rev = await db.execute(select(func.sum(Invoice.amount)).where(Invoice.status == 'Paid'))
-        rev = res_rev.scalar() or 0
-        res_exp = await db.execute(select(func.sum(Expense.amount)))
-        exp = res_exp.scalar() or 0
-        profit = rev - exp
-        db_context += f"• **Financials**: Total revenue (paid invoices) is **${rev:,.2f}**, total expenses are **${exp:,.2f}**, resulting in a net profit of **${profit:,.2f}**.\n"
-        
-    # 6. Documents
-    if "document" in message_text or "file" in message_text:
-        res_doc = await db.execute(select(func.count(Document.id)))
-        doc_count = res_doc.scalar() or 0
-        db_context += f"• **Documents**: There are **{doc_count}** files stored in our document library.\n"
+    # 2. Fetch conversation history for context (up to last 10 messages)
+    history_res = await db.execute(
+        select(AIMessage)
+        .where(AIMessage.session_id == session_id)
+        .order_by(AIMessage.created_at.desc())
+        .limit(10)
+    )
+    history_records = list(reversed(history_res.scalars().all()))
+    formatted_messages = [
+        {"role": m.role, "content": m.content}
+        for m in history_records
+    ]
 
-    # Construct reply
-    if db_context:
-        reply_content = (
-            f"Here is the real-time business data I retrieved from your database:\n\n"
-            f"{db_context}\n"
-            f"Let me know if you would like me to analyze these metrics or query anything else!"
+    # 3. Generate smart, database-aware response via LLM service
+    try:
+        reply_content = await generate_ai_response(
+            messages=formatted_messages,
+            db=db,
+            user_message=payload.message
         )
-    else:
-        # Generic greetings or help
-        reply_content = (
-            f"Hello! I am your Enterprise AI Assistant.\n\n"
-            f"I have direct access to your database. You can ask me real-time questions about your organization. "
-            f"For example, try asking me:\n"
-            f"- *'How many employees and clients do we have?'*\n"
-            f"- *'What is our total revenue and profit?'*\n"
-            f"- *'Show me our active projects and tasks breakdown.'*\n"
-            f"- *'How many documents are stored in the library?'*\n\n"
-            f"How can I assist you today?"
-        )
+    except Exception as e:
+        logger.error(f"Error during AI response generation: {e}", exc_info=True)
+        reply_content = f"⚠️ An unexpected error occurred while processing your request: {str(e)}"
 
-    # Save assistant message
+    # 4. Save assistant response
     asst_msg = AIMessage(
         id=uuid4(),
         session_id=session_id,
@@ -204,7 +213,7 @@ async def send_ai_chat_message(
         content=reply_content
     )
     db.add(asst_msg)
-    
+
     await db.commit()
     await db.refresh(asst_msg)
 

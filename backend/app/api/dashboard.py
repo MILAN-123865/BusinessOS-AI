@@ -15,86 +15,113 @@ from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-@router.get("/overview", status_code=status.HTTP_200_OK)
+@router.get("", status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK, include_in_schema=False)
+@router.get("/metrics", status_code=status.HTTP_200_OK, include_in_schema=False)
 async def get_dashboard_overview(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_active_user)
 ) -> dict:
-    # 1. Active Employees
-    res_emp = await db.execute(select(func.count(User.id)).where(User.is_active == True))
-    active_employees_count = res_emp.scalar() or 0
+    from app.models.commerce import Product, Order, AnalyticsData
+    from app.models.client import Client
+    from datetime import timedelta
+    
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    
+    # Basic counts
+    active_employees_count = (await db.execute(select(func.count(User.id)).where(User.is_active == True))).scalar() or 0
+    customers_count = (await db.execute(select(func.count(Client.id)))).scalar() or 0
+    products_count = (await db.execute(select(func.count(Product.id)))).scalar() or 0
+    orders_count = (await db.execute(select(func.count(Order.id)))).scalar() or 0
+    
+    # Analytics data
+    todays_analytics = (await db.execute(select(AnalyticsData).where(AnalyticsData.date == today))).scalar_one_or_none()
+    
+    # Aggregated metrics for week and month
+    weekly_stats = (await db.execute(
+        select(
+            func.sum(AnalyticsData.revenue), 
+            func.sum(AnalyticsData.expenses), 
+            func.sum(AnalyticsData.profit)
+        ).where(AnalyticsData.date >= week_ago)
+    )).first()
+    
+    monthly_stats = (await db.execute(
+        select(
+            func.sum(AnalyticsData.revenue), 
+            func.sum(AnalyticsData.expenses), 
+            func.sum(AnalyticsData.profit)
+        ).where(AnalyticsData.date >= month_ago)
+    )).first()
 
-    # 2. Active Projects (Status 'In Progress' or 'Planning')
-    res_proj = await db.execute(
-        select(func.count(Project.id))
-        .where(Project.status.in_(["In Progress", "Planning"]))
-    )
-    active_projects_count = res_proj.scalar() or 0
+    today_rev = float(todays_analytics.revenue) if todays_analytics else 0.0
+    week_rev = float(weekly_stats[0] or 0.0)
+    month_rev = float(monthly_stats[0] or 0.0)
+    
+    month_exp = float(monthly_stats[1] or 0.0)
+    month_profit = float(monthly_stats[2] or 0.0)
 
-    # 3. Completed Tasks
-    res_task = await db.execute(
-        select(func.count(Task.id))
-        .where(Task.status == "Completed")
-    )
-    completed_tasks_count = res_task.scalar() or 0
+    # Top Products
+    top_products_res = await db.execute(select(Product).limit(5))
+    top_products = [{"id": str(p.id), "name": p.name, "price": float(p.price)} for p in top_products_res.scalars().all()]
+    
+    # Recent Orders
+    recent_orders_res = await db.execute(select(Order).order_by(Order.order_date.desc()).limit(5))
+    recent_orders = [{"id": str(o.id), "order_number": o.order_number, "total_amount": float(o.total_amount), "status": o.status} for o in recent_orders_res.scalars().all()]
 
-    # Project statuses breakdown
-    res_proj_stats = await db.execute(
-        select(Project.status, func.count(Project.id))
-        .group_by(Project.status)
-    )
-    project_stats = res_proj_stats.all()
-    projects_by_status = [{"name": p[0], "value": p[1]} for p in project_stats]
+    # Chart data (last 6 months aggregated by month, just mocking for now since SQLite/PG date functions differ, but we can do a simple limit)
+    chart_res = await db.execute(select(AnalyticsData).order_by(AnalyticsData.date.desc()).limit(30))
+    chart_data = list(chart_res.scalars().all())
+    chart_data.reverse()
+    formatted_chart_data = [
+        {"name": d.date.strftime("%b %d"), "revenue": float(d.revenue), "expenses": float(d.expenses), "profit": float(d.profit)}
+        for d in chart_data
+    ]
+
+    # Employee Growth (Mocking for now as we don't have historical employee joining dates readily accessible here)
+    employee_growth = [
+        {"name": "Jan", "count": 5},
+        {"name": "Feb", "count": 8},
+        {"name": "Mar", "count": 15},
+        {"name": "Apr", "count": 22},
+        {"name": "May", "count": active_employees_count},
+    ]
+
+    # Projects by Status
+    proj_status_res = await db.execute(select(Project.status, func.count(Project.id)).group_by(Project.status))
+    projects_by_status = [{"name": s, "value": c} for s, c in proj_status_res.all()]
+    if not projects_by_status:
+        projects_by_status = [{"name": "No Projects", "value": 1}]
+
+    def format_metric(title, value, change, trend):
+        return {"title": title, "value": value, "change": change, "trend": trend}
 
     return {
         "success": True,
         "message": "Dashboard overview retrieved successfully.",
         "data": {
             "metrics": {
-                "active_employees": {
-                    "title": "Active Employees",
-                    "value": active_employees_count,
-                    "change": 12.5,
-                    "trend": "up"
-                },
-                "active_projects": {
-                    "title": "Active Projects",
-                    "value": active_projects_count,
-                    "change": 5.8,
-                    "trend": "up"
-                },
-                "completed_tasks": {
-                    "title": "Completed Tasks",
-                    "value": completed_tasks_count,
-                    "change": 22.1,
-                    "trend": "up"
-                },
-                "revenue": {
-                    "title": "Monthly Revenue",
-                    "value": 128450, # Placeholder until Invoice model is implemented
-                    "change": -2.4,
-                    "trend": "down"
-                }
+                "users": format_metric("Total Users", active_employees_count, 5.2, "up"),
+                "customers": format_metric("Total Customers", customers_count, 12.5, "up"),
+                "products": format_metric("Total Products", products_count, 2.1, "up"),
+                "orders": format_metric("Total Orders", orders_count, 8.4, "up"),
+                "revenue": format_metric("Monthly Revenue", month_rev, 15.3, "up"),
+                "expenses": format_metric("Monthly Expenses", month_exp, -2.4, "down"),
+                "profit": format_metric("Monthly Profit", month_profit, 18.2, "up"),
+                "todays_revenue": format_metric("Today's Revenue", today_rev, 4.1, "up"),
+                "weekly_revenue": format_metric("Weekly Revenue", week_rev, 7.8, "up")
             },
+            "top_products": top_products,
+            "recent_orders": recent_orders,
             "charts": {
-                "revenue_trend": [
-                    {"name": "Jan", "revenue": 94000, "expenses": 72000},
-                    {"name": "Feb", "revenue": 102000, "expenses": 75000},
-                    {"name": "Mar", "revenue": 115000, "expenses": 81000},
-                    {"name": "Apr", "revenue": 110000, "expenses": 80000},
-                    {"name": "May", "revenue": 125000, "expenses": 85000},
-                    {"name": "Jun", "revenue": 128450, "expenses": 88000}
-                ],
-                "employee_growth": [
-                    {"name": "Jan", "count": max(0, active_employees_count - 5)},
-                    {"name": "Feb", "count": max(0, active_employees_count - 4)},
-                    {"name": "Mar", "count": max(0, active_employees_count - 3)},
-                    {"name": "Apr", "count": max(0, active_employees_count - 2)},
-                    {"name": "May", "count": max(0, active_employees_count - 1)},
-                    {"name": "Jun", "count": active_employees_count}
-                ],
+                "revenue_trend": formatted_chart_data,
+                "employee_growth": employee_growth,
                 "projects_by_status": projects_by_status
-            }
+            },
+            "system_health": "Healthy"
         },
         "errors": None
     }
@@ -113,10 +140,14 @@ async def get_recent_activities(
     activities = res.scalars().all()
     
     data = []
+    now_utc = datetime.now(timezone.utc)
     for act in activities:
         # Simple relative time calculation
-        diff = datetime.now(timezone.utc) - act.created_at
-        mins = diff.total_seconds() // 60
+        c_at = act.created_at
+        if c_at.tzinfo is None:
+            c_at = c_at.replace(tzinfo=timezone.utc)
+        diff = now_utc - c_at
+        mins = max(0, diff.total_seconds() // 60)
         if mins < 60:
             timestamp = f"{int(mins)} mins ago"
         elif mins < 1440:
@@ -150,7 +181,6 @@ async def get_upcoming_events(
     now = datetime.now(timezone.utc)
     res = await db.execute(
         select(CalendarEvent)
-        .where(CalendarEvent.start_time > now)
         .order_by(CalendarEvent.start_time.asc())
         .limit(5)
     )
@@ -160,10 +190,10 @@ async def get_upcoming_events(
     for evt in events:
         data.append({
             "id": str(evt.id),
-            "type": evt.event_type.lower(),
+            "type": evt.event_type.lower() if evt.event_type else "meeting",
             "title": evt.title,
-            "date": evt.start_time.isoformat(),
-            "organizer": "System" # Will fetch actual organizer when relationships are mapped
+            "date": evt.start_time.isoformat() if hasattr(evt.start_time, "isoformat") else str(evt.start_time),
+            "organizer": "System"
         })
 
     return {
@@ -187,9 +217,13 @@ async def get_notifications(
     notifs = res.scalars().all()
     
     data = []
+    now_utc = datetime.now(timezone.utc)
     for notif in notifs:
-        diff = datetime.now(timezone.utc) - notif.created_at
-        mins = diff.total_seconds() // 60
+        c_at = notif.created_at
+        if c_at.tzinfo is None:
+            c_at = c_at.replace(tzinfo=timezone.utc)
+        diff = now_utc - c_at
+        mins = max(0, diff.total_seconds() // 60)
         if mins < 60:
             timestamp = f"{int(mins)} mins ago"
         elif mins < 1440:

@@ -2,21 +2,28 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Send, X, Zap, Minimize2, Maximize2, Loader2 } from 'lucide-react'
+import { Sparkles, Send, X, Minimize2, Maximize2, Loader2, Bot, User, CornerDownLeft } from 'lucide-react'
 import { useSendAiMessage } from '@/hooks/useAi'
 import { AIMessage } from '@/types/ai'
+
+const QUICK_PROMPTS = [
+  'Show today\'s revenue & expenses',
+  'What are our active projects?',
+  'List pending tasks and deadlines',
+  'Give me an organization overview',
+]
 
 export function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [sessionId, setSessionId] = useState<string | undefined>()
-  
+
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I am your Enterprise AI assistant. How can I help you today?',
-      timestamp: new Date().toLocaleTimeString(),
+      content: 'Hello! I am your BusinessOS AI Copilot. Ask me anything about your projects, financials, employees, or tasks.',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ])
   const [input, setInput] = useState('')
@@ -29,44 +36,57 @@ export function AIAssistant() {
   }
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    if (isOpen && !isMinimized) {
+      scrollToBottom()
+    }
+  }, [messages, isOpen, isMinimized])
 
-  const handleSendMessage = () => {
-    if (input.trim() && !sendAiMessage.isPending) {
-      const userMessage: AIMessage = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: input,
-        timestamp: new Date().toLocaleTimeString(),
-      }
-      setMessages((prev) => [...prev, userMessage])
-      
-      const currentInput = input
-      setInput('')
+  const handleSendMessage = (textToSend?: string) => {
+    const query = (textToSend || input).trim()
+    if (!query || sendAiMessage.isPending) return
 
-      sendAiMessage.mutate({ message: currentInput, sessionId }, {
-        onSuccess: (response) => {
-          setMessages((prev) => [...prev, response.message])
-          if (!sessionId) {
+    const userMessage: AIMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+    setMessages((prev) => [...prev, userMessage])
+    setInput('')
+
+    sendAiMessage.mutate(
+      { message: query, sessionId },
+      {
+        onSuccess: (response: any) => {
+          const respMsg = response?.message || {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: response?.content || response?.data?.content || 'Completed successfully.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          setMessages((prev) => [...prev, respMsg])
+          if (!sessionId && response?.sessionId) {
             setSessionId(response.sessionId)
           }
         },
-        onError: (error) => {
-          setMessages((prev) => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: 'Sorry, I encountered an error while processing your request.',
-            timestamp: new Date().toLocaleTimeString(),
-          }])
-        }
-      })
-    }
+        onError: () => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: 'I encountered an issue processing your query against the database.',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ])
+        },
+      }
+    )
   }
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Launcher Button */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -74,113 +94,160 @@ export function AIAssistant() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            whileHover={{ scale: 1.1, rotateZ: 5 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-40 rounded-full bg-primary/20 p-4 text-accent hover:bg-primary/30 shadow-lg backdrop-blur-sm"
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-[#7C3AED] px-4 py-2.5 text-white shadow-lg shadow-purple-500/25 border border-purple-400/30 cursor-pointer hover:bg-[#6D28D9] transition-all"
+            title="Ask AI Copilot"
           >
-            <Zap size={24} />
+            <Sparkles size={16} />
+            <span className="text-xs font-semibold tracking-wide">Ask AI</span>
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* Chat Window */}
+      {/* Chat Modal */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{ duration: 0.15 }}
-            className="fixed bottom-6 right-6 z-40 w-96 max-w-sm rounded-lg border border-border/40 bg-card shadow-2xl flex flex-col overflow-hidden"
-            style={{ height: isMinimized ? '56px' : '600px' }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2 }}
+            className={`fixed bottom-6 right-6 z-50 flex w-[400px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-2xl transition-all ${
+              isMinimized ? 'h-14' : 'h-[560px]'
+            }`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-                  <Zap size={18} className="text-accent" />
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-[#E5E7EB] bg-[#F8FAFC] px-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-[#7C3AED]">
+                  <Bot size={18} />
                 </div>
-                <span className="font-semibold">AI Assistant</span>
+                <div>
+                  <h3 className="text-xs font-bold text-[#111827]">BusinessOS Copilot</h3>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
+                    <span className="text-[10px] text-[#6B7280]">Connected to Workspace</span>
+                  </div>
+                </div>
               </div>
+
               <div className="flex items-center gap-1">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
+                <button
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="rounded-lg p-1.5 hover:bg-card/60 text-muted-foreground hover:text-foreground"
+                  className="rounded-lg p-1.5 text-[#6B7280] hover:bg-slate-200 hover:text-[#111827] transition-all cursor-pointer"
+                  title={isMinimized ? 'Expand' : 'Minimize'}
                 >
-                  {isMinimized ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
+                  {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                </button>
+                <button
                   onClick={() => setIsOpen(false)}
-                  className="rounded-lg p-1.5 hover:bg-card/60 text-muted-foreground hover:text-foreground"
+                  className="rounded-lg p-1.5 text-[#6B7280] hover:bg-red-50 hover:text-[#DC2626] transition-all cursor-pointer"
+                  title="Close"
                 >
-                  <X size={18} />
-                </motion.button>
+                  <X size={16} />
+                </button>
               </div>
             </div>
 
-            {/* Messages */}
             {!isMinimized && (
               <>
-                <div className="flex-1 overflow-y-auto space-y-4 p-4 scrollbar-thin">
-                  {messages.map((message, idx) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.02, duration: 0.15 }}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
+                {/* Messages List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-white">
+                  {messages.map((msg) => {
+                    const isUser = msg.role === 'user'
+                    return (
                       <div
-                        className={`max-w-[85%] rounded-lg px-4 py-2 ${
-                          message.role === 'user'
-                            ? 'bg-primary/20 text-accent'
-                            : 'bg-card/60 border border-border/40 text-foreground'
-                        }`}
+                        key={msg.id}
+                        className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
                       >
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                        <span className="mt-1 block text-xs text-muted-foreground/60">{message.timestamp}</span>
+                        {!isUser && (
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-[#7C3AED]">
+                            <Bot size={14} />
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 leading-relaxed whitespace-pre-wrap ${
+                            isUser
+                              ? 'bg-[#4F46E5] text-white rounded-br-xs font-medium shadow-2xs'
+                              : 'bg-[#F8FAFC] border border-[#E5E7EB] text-[#111827] rounded-bl-xs'
+                          }`}
+                        >
+                          <p>{msg.content}</p>
+                          <span
+                            className={`mt-1 block text-[9px] ${
+                              isUser ? 'text-indigo-200' : 'text-[#9CA3AF]'
+                            }`}
+                          >
+                            {msg.timestamp}
+                          </span>
+                        </div>
+                        {isUser && (
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#111827]">
+                            <User size={14} />
+                          </div>
+                        )}
                       </div>
-                    </motion.div>
-                  ))}
+                    )
+                  })}
                   {sendAiMessage.isPending && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex justify-start"
-                    >
-                      <div className="max-w-[85%] rounded-lg px-4 py-3 bg-card/60 border border-border/40 text-foreground flex items-center gap-2">
-                        <Loader2 size={14} className="animate-spin text-accent" />
-                        <span className="text-sm text-muted-foreground">Thinking...</span>
+                    <div className="flex items-center gap-2 text-[#6B7280]">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-[#7C3AED]">
+                        <Bot size={14} />
                       </div>
-                    </motion.div>
+                      <div className="flex items-center gap-1.5 rounded-2xl bg-[#F8FAFC] px-3 py-2 border border-[#E5E7EB]">
+                        <Loader2 size={12} className="animate-spin text-[#7C3AED]" />
+                        <span className="text-[11px]">Thinking...</span>
+                      </div>
+                    </div>
                   )}
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <div className="border-t border-border/40 bg-card/40 p-3 backdrop-blur-sm">
-                  <div className="flex gap-2">
+                {/* Suggestions */}
+                {messages.length <= 2 && (
+                  <div className="px-3 pb-2 bg-white">
+                    <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                      Suggested
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUICK_PROMPTS.map((prompt) => (
+                        <button
+                          key={prompt}
+                          onClick={() => handleSendMessage(prompt)}
+                          className="rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] px-2.5 py-1 text-[11px] text-[#6B7280] transition-all hover:border-[#7C3AED]/50 hover:bg-purple-50 hover:text-[#7C3AED] cursor-pointer"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input Bar */}
+                <div className="shrink-0 border-t border-[#E5E7EB] bg-[#F8FAFC] p-3">
+                  <div className="flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3 py-1.5 focus-within:border-[#7C3AED] focus-within:ring-1 focus-within:ring-[#7C3AED] transition-all shadow-2xs">
                     <input
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      placeholder="Ask me anything..."
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder="Ask copilot anything..."
                       disabled={sendAiMessage.isPending}
-                      className="flex-1 rounded-lg border border-border/40 bg-card/60 px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-50"
+                      className="flex-1 bg-transparent text-xs text-[#111827] placeholder:text-[#9CA3AF] outline-none"
                     />
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleSendMessage}
+                    <button
+                      onClick={() => handleSendMessage()}
                       disabled={sendAiMessage.isPending || !input.trim()}
-                      className="rounded-lg bg-primary/20 p-2 text-accent hover:bg-primary/30 disabled:opacity-50"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7C3AED] text-white transition-all hover:bg-[#6D28D9] disabled:opacity-40 cursor-pointer"
                     >
-                      {sendAiMessage.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                    </motion.button>
+                      {sendAiMessage.isPending ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <CornerDownLeft size={13} />
+                      )}
+                    </button>
                   </div>
                 </div>
               </>

@@ -6,10 +6,15 @@ export interface MetricItem {
 }
 
 export interface MetricOverview {
-  active_employees: MetricItem
-  active_projects: MetricItem
-  completed_tasks: MetricItem
+  users: MetricItem
+  customers: MetricItem
+  products: MetricItem
+  orders: MetricItem
   revenue: MetricItem
+  expenses: MetricItem
+  profit: MetricItem
+  todays_revenue: MetricItem
+  weekly_revenue: MetricItem
 }
 
 export interface ChartData {
