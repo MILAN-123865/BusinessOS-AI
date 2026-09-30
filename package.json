@@ -1,0 +1,20 @@
+{
+  "name": "business-os-ai-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "node server.js",
+    "build": "cd frontend && npm run build",
+    "lint": "cd frontend && npm run lint"
+  },
+  "dependencies": {
+    "@google/genai": "^2.12.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}
