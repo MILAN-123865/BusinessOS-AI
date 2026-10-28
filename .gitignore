@@ -49,8 +49,12 @@ pnpm-debug.log*
 *.sqlite
 *.sqlite3
 *.db
+*.db_ai
+*.db_ai*
 database.sqlite
 backend/database.sqlite
+backend/businessos.db_ai
+businessos.db_ai
 *.sql.gz
 
 # ==========================================
