@@ -75,3 +75,12 @@ jobs:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
         run: |
           npm run build
+
+      - name: Install Playwright Browsers
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E Tests
+        run: |
+          npx playwright test
+

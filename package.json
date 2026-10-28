@@ -9,9 +9,11 @@
     "dev": "node scripts/dev.js",
     "dev:backend": "node scripts/dev.js --backend-only",
     "dev:frontend": "node scripts/dev.js --frontend-only",
-    "dev:mock": "node scripts/archive/server.mock.js",
     "build": "cd frontend && npm run build",
-    "lint": "cd frontend && npm run lint"
+    "lint": "cd frontend && npm run lint",
+    "test": "npm run test:backend",
+    "test:backend": "cd backend && pytest tests/ -v",
+    "test:e2e": "cd frontend && npm run test:e2e"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",

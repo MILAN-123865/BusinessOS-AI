@@ -40,8 +40,13 @@ frontend/out/
 .pnp.js
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
+test-results/
+playwright-report/
+blob-report/
+frontend/test-results/
+frontend/playwright-report/
+
 
 # ==========================================
 # 4. Databases & Local State
