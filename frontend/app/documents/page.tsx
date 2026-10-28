@@ -23,6 +23,7 @@ import {
   Filter,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { API_BASE_URL } from '@/services/axios'
 import { format } from 'date-fns'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent } from '@/components/ui/card'
@@ -240,7 +241,7 @@ export default function DocumentsPage() {
               {filteredDocs.map((doc) => {
                 const ext = doc.extension?.toLowerCase() || 'file'
                 const canPreview = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'svg', 'txt', 'csv', 'json'].includes(ext)
-                const downloadUrl = `http://127.0.0.1:8000/api/v1/documents/${doc.id}/download`
+                const downloadUrl = `${API_BASE_URL}/documents/${doc.id}/download`
 
                 return (
                   <div
@@ -410,7 +411,7 @@ export default function DocumentsPage() {
 
                   <div className="flex items-center gap-2">
                     <a
-                      href={`http://127.0.0.1:8000/api/v1/documents/${previewDoc.id}/download`}
+                      href={`${API_BASE_URL}/documents/${previewDoc.id}/download`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all"
@@ -431,14 +432,14 @@ export default function DocumentsPage() {
                 <div className="flex-1 overflow-auto bg-muted/20 p-4 flex items-center justify-center">
                   {previewDoc.extension?.toLowerCase() === 'pdf' ? (
                     <iframe
-                      src={`http://127.0.0.1:8000/api/v1/documents/${previewDoc.id}/file`}
+                      src={`${API_BASE_URL}/documents/${previewDoc.id}/file`}
                       className="h-full w-full rounded-xl border border-border/50 bg-white"
                       title={previewDoc.name}
                     />
                   ) : ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(previewDoc.extension?.toLowerCase() || '') ? (
                     <div className="flex items-center justify-center max-h-full">
                       <img
-                        src={`http://127.0.0.1:8000/api/v1/documents/${previewDoc.id}/file`}
+                        src={`${API_BASE_URL}/documents/${previewDoc.id}/file`}
                         alt={previewDoc.name}
                         className="max-h-[70vh] rounded-xl object-contain border border-border shadow-md"
                       />
@@ -455,7 +456,7 @@ export default function DocumentsPage() {
                         </p>
                       </div>
                       <a
-                        href={`http://127.0.0.1:8000/api/v1/documents/${previewDoc.id}/download`}
+                        href={`${API_BASE_URL}/documents/${previewDoc.id}/download`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all"

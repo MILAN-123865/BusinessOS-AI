@@ -632,11 +632,63 @@ apiRouter.use((req, res, next) => {
 
 // Auth Login
 apiRouter.post('/auth/login', (req, res) => {
+  const inputEmail = (req.body.username || req.body.email || '').trim();
+  let foundUser = users.find(u => u.email.toLowerCase() === inputEmail.toLowerCase());
+  
+  if (!foundUser) {
+    const rawName = inputEmail.split('@')[0] || 'User';
+    const nameParts = rawName.split('.');
+    const firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Demo';
+    const lastName = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : 'User';
+
+    foundUser = {
+      id: `user-${Date.now()}`,
+      email: inputEmail || 'admin@company.com',
+      first_name: firstName,
+      last_name: lastName,
+      is_superuser: true,
+      is_verified: true,
+      is_active: true,
+      phone_number: '+1234567890',
+      roles: ['Administrator'],
+      permissions: MOCK_USER.permissions,
+      organization_id: 'org-1',
+      department_id: 'dept-1'
+    };
+    users.push(foundUser);
+  }
+
   res.json({
     access_token: 'mock-access-token',
     refresh_token: 'mock-refresh-token',
     token_type: 'bearer',
-    user: MOCK_USER
+    user: foundUser
+  });
+});
+
+// Auth Register
+apiRouter.post('/auth/register', (req, res) => {
+  const { email, first_name, last_name } = req.body;
+  const newUser = {
+    id: `user-${Date.now()}`,
+    email: email || 'user@company.com',
+    first_name: first_name || 'New',
+    last_name: last_name || 'User',
+    is_superuser: false,
+    is_verified: true,
+    is_active: true,
+    phone_number: '+1234567890',
+    roles: ['Member'],
+    permissions: [],
+    organization_id: 'org-1',
+    department_id: 'dept-1'
+  };
+  users.push(newUser);
+  res.json({
+    access_token: 'mock-access-token',
+    refresh_token: 'mock-refresh-token',
+    token_type: 'bearer',
+    user: newUser
   });
 });
 
@@ -754,7 +806,7 @@ apiRouter.get('/departments/:id/employees', (req, res) => {
 });
 
 // Dashboard
-apiRouter.get('/dashboard/overview', async (req, res) => {
+const handleDashboardOverview = async (req, res) => {
   try {
     const db = await getDb();
     const projectsRows = await db.all('SELECT * FROM projects');
@@ -810,7 +862,10 @@ apiRouter.get('/dashboard/overview', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, detail: err.message });
   }
-});
+};
+
+apiRouter.get('/dashboard', handleDashboardOverview);
+apiRouter.get('/dashboard/overview', handleDashboardOverview);
 
 apiRouter.get('/dashboard/ai-insights', async (req, res) => {
   try {
@@ -2709,7 +2764,7 @@ app.get('/health', (req, res) => {
 // START SERVERS
 // ==========================================
 
-const API_PORT = 3001;
+const API_PORT = process.env.PORT || 8000;
 app.listen(API_PORT, '0.0.0.0', () => {
   console.log(`[API MOCK] Mock Service active on port ${API_PORT}`);
 });
@@ -2722,8 +2777,7 @@ const nextDev = spawn('npm', ['run', 'dev', '--', '-p', '3000', '-H', '0.0.0.0']
 });
 
 nextDev.on('close', (code) => {
-  console.log(`Next.js process exited with code ${code}`);
-  process.exit(code);
+  console.log(`[API MOCK] Next.js child process exited with code ${code}. Express API service remains active on port ${API_PORT}.`);
 });
 
 process.on('SIGINT', () => {

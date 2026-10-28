@@ -41,3 +41,29 @@ export const useDeleteAiSession = () => {
     }
   })
 }
+
+export const useCreateAiSession = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (_title?: string) => {
+      const newSessionId = `session-${Date.now()}`
+      return { id: newSessionId, title: _title || 'New Conversation', created_at: new Date().toISOString() }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-sessions'] })
+    }
+  })
+}
+
+export const useClearChat = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      await deleteChatSessionApi(sessionId)
+    },
+    onSuccess: (_, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['ai-chat', sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['ai-sessions'] })
+    }
+  })
+}

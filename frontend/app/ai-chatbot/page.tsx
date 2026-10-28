@@ -31,9 +31,7 @@ import {
   useClearChat
 } from '@/hooks/useAi'
 import { format } from 'date-fns'
-import ReactMarkdown from 'react-markdown'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 
 type ColorSchemeId = 'bold' | 'minimalist' | 'cyberpunk' | 'emerald'
 
@@ -216,7 +214,7 @@ export default function AIChatbotPage() {
   const handleCreateSession = () => {
     const title = `Chat session ${sessions.length + 1}`
     createSessionMutation.mutate(title, {
-      onSuccess: (newSession) => {
+      onSuccess: (newSession: any) => {
         setActiveSessionId(newSession.id)
       }
     })
@@ -611,30 +609,7 @@ export default function AIChatbotPage() {
                           {isUser ? (
                             msg.content
                           ) : (
-                            <ReactMarkdown
-                              components={{
-                                code({ node, inline, className, children, ...props }: any) {
-                                  const match = /language-(\w+)/.exec(className || '')
-                                  return !inline && match ? (
-                                    <SyntaxHighlighter
-                                      style={vscDarkPlus as any}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      className="rounded-md mt-2 mb-2 text-xs"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, '')}
-                                    </SyntaxHighlighter>
-                                  ) : (
-                                    <code className="bg-accent/20 text-accent px-1 py-0.5 rounded text-xs" {...props}>
-                                      {children}
-                                    </code>
-                                  )
-                                }
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
+                            <MarkdownRenderer content={msg.content} />
                           )}
                         </div>
 

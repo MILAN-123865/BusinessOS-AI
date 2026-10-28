@@ -19,9 +19,14 @@ export interface KPIMetric {
 }
 
 export interface AnalyticsData {
-  kpis: KPIMetric[]
-  chartData: ChartDataPoint[]
-  taskDistribution: TaskDistributionPoint[]
+  kpis?: KPIMetric[]
+  chartData?: ChartDataPoint[]
+  charts_data?: ChartDataPoint[]
+  taskDistribution?: TaskDistributionPoint[]
+  revenue?: number
+  profit?: number
+  expenses?: number
+  visitors?: number
 }
 
 export interface AnalyticsFilterParams {

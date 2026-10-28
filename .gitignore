@@ -1,34 +1,76 @@
-# Python
-backend/.venv/
-backend/__pycache__/
-backend/.pytest_cache/
-backend/.mypy_cache/
+# ==========================================
+# 1. Environment & Secrets (NEVER COMMIT)
+# ==========================================
+.env
+.env.*
+!.env.example
 backend/.env
+frontend/.env.local
+frontend/.env.production
+*.pem
+*.key
 
-# Node
+# ==========================================
+# 2. Python & Backend
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+backend/.venv/
+.venv_fresh/
+env/
+venv/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ==========================================
+# 3. Node.js & Frontend
+# ==========================================
+node_modules/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Logs
-*.log
+# ==========================================
+# 4. Databases & Local State
+# ==========================================
+*.sqlite
+*.sqlite3
+*.db
+database.sqlite
+backend/database.sqlite
+*.sql.gz
 
-# OS
+# ==========================================
+# 5. OS & IDE Specifics
+# ==========================================
 .DS_Store
 Thumbs.db
-
-# IDE
+desktop.ini
 .vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
+*.swp
+*.swo
 
-# Environment
-.env
-.env.local
-.env.production
-
-# Python
-*.pyc
-
-# Build
+# ==========================================
+# 6. Build Artifacts & Logs
+# ==========================================
 dist/
 build/
+*.log
+logs/
+.system_generated/

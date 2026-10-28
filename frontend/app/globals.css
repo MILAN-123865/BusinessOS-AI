@@ -1,35 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
-@theme inline {
-  --color-background: #F8FAFC;
-  --color-foreground: #111827;
-  --color-card: #FFFFFF;
-  --color-card-foreground: #111827;
-  --color-popover: #FFFFFF;
-  --color-popover-foreground: #111827;
-  --color-primary: #4F46E5;
-  --color-primary-hover: #4338CA;
-  --color-primary-foreground: #FFFFFF;
-  --color-secondary: #F1F5F9;
-  --color-secondary-foreground: #111827;
-  --color-muted: #F8FAFC;
-  --color-muted-foreground: #6B7280;
-  --color-accent: #7C3AED;
-  --color-accent-foreground: #FFFFFF;
-  --color-destructive: #DC2626;
-  --color-destructive-foreground: #FFFFFF;
-  --color-border: #E5E7EB;
-  --color-input: #E5E7EB;
-  --color-ring: #4F46E5;
-  --color-success: #16A34A;
-  --color-warning: #D97706;
+@custom-variant dark (&:is(.dark *));
 
-  --color-sidebar: #FFFFFF;
-  --color-sidebar-foreground: #111827;
-  --color-sidebar-accent: #4F46E5;
-  --color-sidebar-accent-foreground: #FFFFFF;
-  --color-sidebar-border: #E5E7EB;
+@theme inline {
+  --color-background: var(--bg-main);
+  --color-foreground: var(--text-main);
+  --color-card: var(--card-bg);
+  --color-card-foreground: var(--card-text);
+  --color-popover: var(--card-bg);
+  --color-popover-foreground: var(--card-text);
+  --color-primary: #0284C7;
+  --color-primary-hover: #0369A1;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: var(--secondary-bg);
+  --color-secondary-foreground: var(--secondary-text);
+  --color-muted: var(--muted-bg);
+  --color-muted-foreground: var(--muted-text);
+  --color-accent: #0EA5E9;
+  --color-accent-foreground: #FFFFFF;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: var(--border-color);
+  --color-input: var(--border-color);
+  --color-ring: #0284C7;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-text);
+  --color-sidebar-accent: var(--sidebar-accent-bg);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-text);
+  --color-sidebar-border: var(--border-color);
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-heading: 'Plus Jakarta Sans', var(--font-sans);
@@ -45,61 +47,66 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --radius: 0.75rem;
 
-  /* Custom requested color values */
-  --background: 210 40% 98%;      /* #F8FAFC */
-  --foreground: 221 39% 11%;      /* #111827 */
-  --card: 0 0% 100%;             /* #FFFFFF */
-  --card-foreground: 221 39% 11%; /* #111827 */
-  --popover: 0 0% 100%;          /* #FFFFFF */
-  --popover-foreground: 221 39% 11%;
-  
-  --primary: 243 75% 59%;         /* #4F46E5 */
-  --primary-hover: 244 58% 51%;   /* #4338CA */
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 221 39% 11%;
-  
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;/* #6B7280 */
-  
-  --accent: 262 83% 58%;          /* #7C3AED (AI Accent) */
-  --accent-foreground: 0 0% 100%;
-  
-  --destructive: 0 72% 51%;       /* #DC2626 */
-  --destructive-foreground: 0 0% 100%;
-  
-  --success: 142 76% 36%;         /* #16A34A */
-  --warning: 38 92% 50%;          /* #D97706 */
-  
-  --border: 220 13% 91%;          /* #E5E7EB */
-  --input: 220 13% 91%;           /* #E5E7EB */
-  --ring: 243 75% 59%;
+  /* Clean White & Light Blue Palette (Light Mode) */
+  --bg-main: #F0F7FF;
+  --text-main: #0F172A;
+  --card-bg: #FFFFFF;
+  --card-text: #0F172A;
+  --secondary-bg: #E0F2FE;
+  --secondary-text: #0369A1;
+  --muted-bg: #F1F5F9;
+  --muted-text: #64748B;
+  --border-color: #E2E8F0;
 
-  --sidebar: 0 0% 100%;           /* #FFFFFF */
-  --sidebar-foreground: 221 39% 11%;
-  --sidebar-accent: 243 75% 59%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 220 13% 91%;  /* #E5E7EB */
+  --sidebar-bg: #FFFFFF;
+  --sidebar-text: #0F172A;
+  --sidebar-accent-bg: #E0F2FE;
+  --sidebar-accent-text: #0284C7;
+
+  /* HSL fallbacks */
+  --background: 210 100% 97%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --border: 214 32% 91%;
+  --primary: 199 89% 40%;
+}
+
+.dark {
+  /* Sleek Dark Navy & Slate Palette (Dark Mode) */
+  --bg-main: #0B132B;
+  --text-main: #F8FAFC;
+  --card-bg: #131E3A;
+  --card-text: #F8FAFC;
+  --secondary-bg: #1E293B;
+  --secondary-text: #38BDF8;
+  --muted-bg: #162038;
+  --muted-text: #94A3B8;
+  --border-color: #202F54;
+
+  --sidebar-bg: #0E1733;
+  --sidebar-text: #F8FAFC;
+  --sidebar-accent-bg: #1E294A;
+  --sidebar-accent-text: #38BDF8;
+
+  /* HSL fallbacks */
+  --background: 224 58% 11%;
+  --foreground: 210 40% 98%;
+  --card: 225 50% 15%;
+  --card-foreground: 210 40% 98%;
+  --border: 223 45% 23%;
+  --primary: 199 89% 48%;
 }
 
 * {
-  border-color: #E5E7EB;
+  border-color: var(--border-color);
 }
 
 body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
   font-family: var(--font-sans);
-  background-color: #F8FAFC;
-  color: #111827;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading), var(--font-sans);
-  letter-spacing: -0.02em;
-  color: #111827;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Crisp Clean Scrollbars */
@@ -107,41 +114,13 @@ h1, h2, h3, h4, h5, h6 {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: rgba(2, 132, 199, 0.2);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-
-/* Card & Surface Clean Shadows */
-.clean-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E5E7EB;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease-in-out;
-}
-
-.clean-card:hover {
-  border-color: #D1D5DB;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-}
-
-.clean-input {
-  background-color: #FFFFFF;
-  border: 1px solid #E5E7EB;
-  color: #111827;
-}
-
-.clean-input:focus {
-  border-color: #4F46E5;
-  box-shadow: 0 0 0 1px #4F46E5;
+  background: rgba(2, 132, 199, 0.4);
 }

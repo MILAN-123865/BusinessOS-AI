@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN npm install
 
 COPY . .
 
-# Setting development mode explicitly since this is mapped with a volume
 ENV NODE_ENV=development
 
 CMD ["npm", "run", "dev"]
+

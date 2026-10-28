@@ -5,8 +5,9 @@ Enables real-time queries and actions against enterprise database models.
 
 from typing import Dict, Any, List, Optional
 import uuid
+import re
 from datetime import datetime, timezone
-from sqlalchemy import func, and_, or_, desc
+from sqlalchemy import func, and_, or_, desc, text
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,6 +49,7 @@ async def tool_get_organization_overview(db: AsyncSession) -> Dict[str, Any]:
     doc_count = (await db.execute(select(func.count(Document.id)))).scalar() or 0
     prod_count = (await db.execute(select(func.count(Product.id)))).scalar() or 0
     inv_total = (await db.execute(select(func.sum(Inventory.quantity)))).scalar() or 0
+    order_count = (await db.execute(select(func.count(Order.id)))).scalar() or 0
 
     return {
         "employees": {"active_count": emp_count, "departments_count": dept_count},
@@ -61,8 +63,208 @@ async def tool_get_organization_overview(db: AsyncSession) -> Dict[str, Any]:
             "net_profit_usd": round(float(profit), 2),
         },
         "documents": {"count": doc_count},
-        "commerce": {"products": prod_count, "total_units_in_stock": inv_total}
+        "commerce": {
+            "products": prod_count,
+            "total_units_in_stock": inv_total,
+            "total_orders": order_count,
+        }
     }
+
+
+async def tool_execute_readonly_sql(db: AsyncSession, query: str) -> Dict[str, Any]:
+    """
+    Safely execute a read-only SQL query (SELECT / WITH / PRAGMA) against the live database.
+    Rejects any mutation queries (DROP, DELETE, UPDATE, INSERT, ALTER, etc.).
+    """
+    clean_q = query.strip().rstrip(";")
+    lower_q = clean_q.lower()
+    
+    # Strip leading comments if any
+    lower_q = re.sub(r"^/\*.*?\*/", "", lower_q, flags=re.DOTALL).strip()
+    lower_q = re.sub(r"^--.*?\n", "", lower_q).strip()
+
+    # Disallow destructive/mutating keywords
+    forbidden = ["insert ", "update ", "delete ", "drop ", "alter ", "truncate ", "create ", "replace ", "attach ", "detach ", "grant ", "revoke "]
+    for bad in forbidden:
+        if bad in lower_q or lower_q.startswith(bad.strip()):
+            return {
+                "success": False,
+                "error": f"Security violation: Query contains mutating statement '{bad.strip().upper()}'. Only read-only queries are permitted.",
+                "columns": [],
+                "rows": [],
+                "row_count": 0
+            }
+
+    if not (lower_q.startswith("select") or lower_q.startswith("with") or lower_q.startswith("pragma") or lower_q.startswith("explain")):
+        return {
+            "success": False,
+            "error": "Only read-only SELECT, WITH, PRAGMA, or EXPLAIN queries are permitted.",
+            "columns": [],
+            "rows": [],
+            "row_count": 0
+        }
+
+    try:
+        result = await db.execute(text(clean_q))
+        columns = list(result.keys()) if result.returns_rows else []
+        raw_rows = result.fetchmany(50) if result.returns_rows else []
+        
+        rows = []
+        for r in raw_rows:
+            row_dict = {}
+            for idx, col in enumerate(columns):
+                val = r[idx]
+                if isinstance(val, (datetime, uuid.UUID)):
+                    val = str(val)
+                elif hasattr(val, "__float__"):
+                    val = float(val)
+                row_dict[col] = val
+            rows.append(row_dict)
+
+        return {
+            "success": True,
+            "query": clean_q,
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "is_truncated": len(raw_rows) == 50
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "query": clean_q,
+            "columns": [],
+            "rows": [],
+            "row_count": 0
+        }
+
+
+async def tool_query_clients(
+    db: AsyncSession,
+    search: Optional[str] = None,
+    country: Optional[str] = None,
+    limit: int = 15
+) -> List[Dict[str, Any]]:
+    """Search and inspect enterprise clients and accounts."""
+    stmt = select(Client).order_by(Client.company_name.asc()).limit(limit)
+    conditions = []
+    
+    if search:
+        search_pattern = f"%{search.strip()}%"
+        conditions.append(or_(
+            Client.company_name.ilike(search_pattern),
+            Client.city.ilike(search_pattern),
+            Client.industry.ilike(search_pattern),
+            Client.client_code.ilike(search_pattern)
+        ))
+    if country:
+        conditions.append(Client.country.ilike(f"%{country.strip()}%"))
+        
+    if conditions:
+        stmt = select(Client).where(and_(*conditions)).order_by(Client.company_name.asc()).limit(limit)
+        
+    result = await db.execute(stmt)
+    clients = result.scalars().all()
+    
+    return [
+        {
+            "id": str(c.id),
+            "company_name": c.company_name,
+            "client_code": c.client_code,
+            "industry": c.industry or "General Commerce",
+            "city": c.city or "Unknown",
+            "country": c.country or "Global",
+            "phone": c.phone or "N/A",
+            "email": c.email or "N/A",
+            "status": c.status or "Active"
+        }
+        for c in clients
+    ]
+
+
+async def tool_query_products_inventory(
+    db: AsyncSession,
+    category: Optional[str] = None,
+    low_stock_threshold: Optional[int] = None,
+    limit: int = 20
+) -> List[Dict[str, Any]]:
+    """Query product catalog with pricing, category, and real-time inventory levels."""
+    stmt = (
+        select(Product, Inventory.quantity, Inventory.location)
+        .outerjoin(Inventory, Product.id == Inventory.product_id)
+        .order_by(Product.name.asc())
+        .limit(limit)
+    )
+    conditions = []
+    if category:
+        conditions.append(Product.category.ilike(f"%{category.strip()}%"))
+    if low_stock_threshold is not None:
+        conditions.append(or_(Inventory.quantity <= low_stock_threshold, Inventory.quantity == None))
+        
+    if conditions:
+        stmt = (
+            select(Product, Inventory.quantity, Inventory.location)
+            .outerjoin(Inventory, Product.id == Inventory.product_id)
+            .where(and_(*conditions))
+            .order_by(Product.name.asc())
+            .limit(limit)
+        )
+        
+    result = await db.execute(stmt)
+    items = result.all()
+    
+    output = []
+    for prod, qty, loc in items:
+        stock_qty = qty if qty is not None else 0
+        output.append({
+            "id": str(prod.id),
+            "name": prod.name,
+            "sku": prod.sku,
+            "category": prod.category or "General",
+            "price": float(prod.price) if prod.price else 0.0,
+            "stock_quantity": stock_qty,
+            "location": loc or "Main Warehouse",
+            "is_low_stock": stock_qty <= 15
+        })
+    return output
+
+
+async def tool_query_orders(
+    db: AsyncSession,
+    status_filter: Optional[str] = None,
+    limit: int = 15
+) -> List[Dict[str, Any]]:
+    """List purchase orders with customer names and fulfillment status."""
+    stmt = (
+        select(Order, Client.company_name)
+        .outerjoin(Client, Order.customer_id == Client.id)
+        .order_by(desc(Order.order_date))
+        .limit(limit)
+    )
+    if status_filter:
+        stmt = (
+            select(Order, Client.company_name)
+            .outerjoin(Client, Order.customer_id == Client.id)
+            .where(func.lower(Order.status) == status_filter.lower())
+            .order_by(desc(Order.order_date))
+            .limit(limit)
+        )
+        
+    result = await db.execute(stmt)
+    orders_data = result.all()
+    
+    return [
+        {
+            "id": str(o.id),
+            "order_number": o.order_number,
+            "client_name": client_name or "Direct Client",
+            "total_amount": float(o.total_amount) if o.total_amount else 0.0,
+            "status": o.status or "Pending",
+            "order_date": o.order_date.strftime("%Y-%m-%d") if o.order_date else None
+        }
+        for o, client_name in orders_data
+    ]
 
 
 async def tool_query_projects(db: AsyncSession, status_filter: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
@@ -123,7 +325,6 @@ async def tool_query_financials(db: AsyncSession) -> Dict[str, Any]:
     
     total_exp = (await db.execute(select(func.sum(Expense.amount)))).scalar() or 0.0
     
-    # Recent 5 invoices
     recent_inv_stmt = select(Invoice).order_by(desc(Invoice.created_at)).limit(5)
     recent_invoices = (await db.execute(recent_inv_stmt)).scalars().all()
 
@@ -146,17 +347,24 @@ async def tool_query_financials(db: AsyncSession) -> Dict[str, Any]:
 
 async def tool_query_team(db: AsyncSession, limit: int = 15) -> List[Dict[str, Any]]:
     """Query team members and departments."""
-    stmt = select(User).where(User.is_active == True).limit(limit)
-    users = (await db.execute(stmt)).scalars().all()
+    stmt = (
+        select(User, Department.name)
+        .outerjoin(Department, User.department_id == Department.id)
+        .where(User.is_active == True)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    items = result.all()
     
     return [
         {
             "id": str(u.id),
             "name": f"{u.first_name} {u.last_name}",
             "email": u.email,
+            "department": dept_name or "General Staff",
             "is_superuser": u.is_superuser
         }
-        for u in users
+        for u, dept_name in items
     ]
 
 

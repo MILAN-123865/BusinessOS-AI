@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useSystemSettings, useUpdateSystemSettings } from '@/hooks/useSettings'
 import { Settings, Shield, Bell, Zap, Save, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -137,6 +138,13 @@ export default function SettingsPage() {
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
                       </select>
+                    </div>
+
+                    {/* Appearance & Theme Selector */}
+                    <div className="space-y-2 sm:col-span-2 pt-2 border-t border-border/40">
+                      <label className="text-sm font-semibold text-foreground">Interface Theme & Appearance</label>
+                      <p className="text-xs text-muted-foreground mb-2">Select your preferred color theme across all workspaces and dashboards.</p>
+                      <ThemeToggle variant="segmented" className="w-fit" />
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   ChevronRight,
   Menu,
@@ -24,21 +24,29 @@ import {
   KeyRound,
   Sparkles,
   UserCheck,
-  RefreshCw,
-  ChevronDown
+  ChevronDown,
+  Layers,
+  Receipt,
+  Boxes,
+  BookOpen,
+  Activity,
+  Network,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useLogout, useLogin } from '@/hooks/useAuth'
+import { BusinessOSLogo } from '@/components/ui/business-os-logo'
+import { PRESET_SIMULATED_ROLES } from '@/types/rbac'
 
 interface NavItem {
   icon: React.ComponentType<{ size?: number; className?: string }>
   label: string
   href: string
   badge?: string | number
-  adminOnly?: boolean
+  visible?: boolean
 }
 
 interface NavSection {
@@ -51,45 +59,90 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  
   const user = useAuthStore((state) => state.user)
+  const simulatedRole = useAuthStore((state) => state.simulatedRole)
+  const isSuperuserEffective = useAuthStore((state) => state.isSuperuserEffective)
+  const hasPermission = useAuthStore((state) => state.hasPermission)
+  const setSimulatedRole = useAuthStore((state) => state.setSimulatedRole)
+  const resetSimulation = useAuthStore((state) => state.resetSimulation)
+  
   const logout = useLogout()
-  const loginMutation = useLogin()
 
-  const isAdmin = user?.is_superuser || user?.email?.includes('admin') || !user
+  // Warm-up and prefetch all primary workspace routes in idle background for instant 0ms switching
+  useEffect(() => {
+    const coreRoutes = [
+      '/dashboard',
+      '/calendar',
+      '/tasks',
+      '/projects',
+      '/clients',
+      '/inventory',
+      '/employees',
+      '/analytics',
+      '/workflows',
+      '/documents',
+      '/knowledge-base',
+      '/chat',
+      '/ai-assistant',
+      '/finance',
+      '/organization/org-chart',
+      '/roles',
+      '/permissions',
+      '/rbac-simulator',
+      '/settings/diagnostics',
+      '/settings',
+      '/profile'
+    ]
+    coreRoutes.forEach((route) => {
+      router.prefetch(route)
+    })
+  }, [router])
+
+  const isSuperuser = isSuperuserEffective()
 
   const navSections: NavSection[] = [
     {
       title: 'Workspace',
       items: [
-        { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-        { icon: Sparkles, label: 'AI Copilot', href: '/ai-assistant', badge: 'AI' },
-        { icon: CheckSquare, label: 'Tasks & Kanban', href: '/tasks' },
-        { icon: FolderOpen, label: 'Projects', href: '/projects' },
-        { icon: Building2, label: 'Clients', href: '/clients' },
-        { icon: Calendar, label: 'Calendar & Meetings', href: '/calendar' },
-        { icon: FileText, label: 'Documents', href: '/documents' },
-        { icon: MessageSquare, label: 'Team Chat', href: '/chat' },
-      ],
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', visible: hasPermission('dashboard.read') },
+        { icon: Sparkles, label: 'AI Copilot', href: '/ai-assistant', badge: 'AI', visible: true },
+        { icon: CheckSquare, label: 'Tasks & Kanban', href: '/tasks', visible: true },
+        { icon: FolderOpen, label: 'Projects', href: '/projects', visible: hasPermission('projects.read') },
+        { icon: Building2, label: 'Clients', href: '/clients', visible: hasPermission('clients.read') },
+        { icon: Boxes, label: 'Inventory & SKUs', href: '/inventory', badge: 'Live', visible: true },
+        { icon: Receipt, label: 'Finance & Invoices', href: '/finance', badge: 'PDF', visible: true },
+        { icon: Calendar, label: 'Calendar & Meetings', href: '/calendar', visible: true },
+        { icon: BookOpen, label: 'Knowledge Base', href: '/knowledge-base', badge: 'RAG', visible: true },
+        { icon: FileText, label: 'Documents', href: '/documents', visible: hasPermission('documents.read') },
+        { icon: MessageSquare, label: 'Team Chat', href: '/chat', visible: true },
+      ].filter((i) => i.visible !== false),
     },
     {
-      title: isAdmin ? 'Enterprise Admin' : 'Operations',
-      badge: isAdmin ? 'Admin' : undefined,
+      title: isSuperuser ? 'Enterprise Security' : 'Operations',
+      badge: isSuperuser ? 'Admin' : (simulatedRole ? simulatedRole.name.split(' ')[0] : undefined),
       items: [
-        ...(isAdmin ? [
-          { icon: Building2, label: 'Organization', href: '/organization', adminOnly: true },
-          { icon: Users, label: 'Employees', href: '/employees' },
-          { icon: Shield, label: 'Roles & RBAC', href: '/roles', adminOnly: true },
-          { icon: KeyRound, label: 'Permissions', href: '/permissions', adminOnly: true },
+        ...(isSuperuser ? [
+          { icon: Building2, label: 'Organization', href: '/organization', visible: hasPermission('organization.read') },
+          { icon: Network, label: 'Org Hierarchy', href: '/organization/org-chart', badge: 'Tree', visible: true },
+          { icon: Users, label: 'Employees', href: '/employees', visible: hasPermission('employees.read') },
+          { icon: Shield, label: 'Roles & RBAC', href: '/roles', visible: hasPermission('roles.read') },
+          { icon: KeyRound, label: 'Permissions', href: '/permissions', visible: hasPermission('permissions.read') },
         ] : [
-          { icon: Users, label: 'Team Directory', href: '/employees' },
+          { icon: Users, label: 'Team Directory', href: '/employees', visible: hasPermission('employees.read') },
+          { icon: Network, label: 'Org Hierarchy', href: '/organization/org-chart', visible: true },
+          ...(hasPermission('organization.read') ? [{ icon: Building2, label: 'Organization', href: '/organization' }] : []),
         ]),
+        { icon: Layers, label: 'RBAC Sandbox', href: '/rbac-simulator', badge: 'Sim' },
         { icon: GitBranch, label: 'Workflows', href: '/workflows' },
-      ],
+      ].filter((i) => i.visible !== false),
     },
     {
       title: 'Insights & System',
       items: [
         { icon: BarChart3, label: 'Analytics', href: '/analytics' },
+        { icon: Activity, label: 'System Health', href: '/settings/diagnostics', badge: 'Live' },
         { icon: Bell, label: 'Notifications', href: '/notifications' },
         { icon: Settings, label: 'Settings', href: '/settings' },
       ],
@@ -101,17 +154,12 @@ export function Sidebar() {
     return pathname?.startsWith(href)
   }
 
-  const handleRoleSwitch = (email: string) => {
-    loginMutation.mutate({ username: email, password: 'Admin123!' })
-    setShowRoleSwitcher(false)
-  }
-
   return (
     <>
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed left-4 top-4 z-50 rounded-xl border border-border/60 bg-card/90 p-2.5 shadow-md backdrop-blur-md lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-xl border border-[#E2E8F0] dark:border-[#202F54] bg-white/90 dark:bg-[#0E1733]/90 p-2.5 text-[#0F172A] dark:text-slate-100 shadow-md backdrop-blur-md lg:hidden"
         aria-label="Toggle Menu"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -124,7 +172,7 @@ export function Sidebar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -138,34 +186,19 @@ export function Sidebar() {
           x: 0,
         }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
-        className={`fixed left-0 top-0 z-40 h-screen flex-col border-r border-sidebar-border bg-sidebar shadow-xl lg:flex ${
+        className={`fixed left-0 top-0 z-40 h-screen flex-col border-r border-[#E2E8F0] dark:border-[#202F54] bg-white dark:bg-[#0E1733] shadow-xl shadow-sky-950/5 lg:flex transition-colors ${
           isOpen ? 'flex' : 'hidden lg:flex'
         }`}
       >
         {/* Logo Brand Header */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 bg-white">
-          <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F46E5] shadow-sm">
-              <Sparkles size={18} className="text-white" />
-            </div>
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base font-bold tracking-tight text-[#111827]">BusinessOS</span>
-                  <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-[#4F46E5]">AI</span>
-                </div>
-                <span className="text-[11px] font-medium text-[#6B7280]">Enterprise Workspace</span>
-              </motion.div>
-            )}
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#E2E8F0] dark:border-[#202F54] px-4 bg-white dark:bg-[#0E1733] transition-colors">
+          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+            <BusinessOSLogo size={30} showWordmark={isOpen} />
           </Link>
 
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="hidden rounded-lg p-1.5 text-[#6B7280] hover:bg-slate-100 hover:text-[#111827] transition-all lg:flex cursor-pointer"
+            className="hidden rounded-lg p-1.5 text-[#64748B] dark:text-slate-400 hover:bg-[#F0F7FF] dark:hover:bg-slate-800 hover:text-[#0284C7] dark:hover:text-sky-400 transition-all lg:flex cursor-pointer"
             title={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
           >
             <ChevronRight
@@ -183,13 +216,13 @@ export function Sidebar() {
                 // @ts-ignore
                 if (window.openCommandPalette) window.openCommandPalette()
               }}
-              className="flex w-full items-center justify-between rounded-xl border border-border bg-[#F8FAFC] px-3 py-2 text-xs text-[#6B7280] transition-all hover:border-[#4F46E5]/40 hover:bg-white hover:text-[#111827] cursor-pointer shadow-2xs"
+              className="flex w-full items-center justify-between rounded-xl border border-[#E2E8F0] dark:border-[#202F54] bg-[#F8FAFC] dark:bg-[#131E3A] px-3 py-2 text-xs text-[#64748B] dark:text-slate-400 transition-all hover:border-[#0284C7]/60 hover:bg-[#F0F7FF] dark:hover:bg-slate-800 hover:text-[#0284C7] dark:hover:text-sky-400 cursor-pointer shadow-2xs"
             >
               <div className="flex items-center gap-2">
-                <Search size={14} />
-                <span>Search anything...</span>
+                <Search size={14} className="text-[#64748B] dark:text-slate-400" />
+                <span className="font-medium">Search anything...</span>
               </div>
-              <kbd className="rounded border border-border bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#6B7280]">Ctrl+K</kbd>
+              <kbd className="rounded border border-[#E2E8F0] dark:border-[#202F54] bg-white dark:bg-[#0E1733] px-1.5 py-0.5 text-[10px] font-semibold text-[#64748B] dark:text-slate-400">Ctrl+K</kbd>
             </button>
           </div>
         )}
@@ -200,11 +233,11 @@ export function Sidebar() {
             <div key={section.title} className="space-y-1">
               {isOpen && (
                 <div className="flex items-center justify-between px-3">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-slate-400">
                     {section.title}
                   </h3>
                   {section.badge && (
-                    <span className="rounded bg-indigo-100 px-1.5 py-0.2 text-[9px] font-bold text-[#4F46E5] uppercase">
+                    <span className="rounded bg-[#E0F2FE] dark:bg-sky-950/70 px-1.5 py-0.2 text-[9px] font-bold text-[#0284C7] dark:text-sky-400 uppercase">
                       {section.badge}
                     </span>
                   )}
@@ -218,33 +251,27 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch={true}
                       title={!isOpen ? item.label : undefined}
-                      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                         active
-                          ? 'bg-indigo-50 text-[#4F46E5] font-semibold shadow-2xs border border-indigo-100'
-                          : 'text-[#6B7280] hover:bg-[#F8FAFC] hover:text-[#111827]'
+                          ? 'bg-[#E0F2FE] dark:bg-sky-950/70 text-[#0284C7] dark:text-sky-300 font-bold shadow-xs border border-[#BAE6FD] dark:border-sky-800/60'
+                          : 'text-[#475569] dark:text-slate-300 hover:bg-[#F0F7FF] dark:hover:bg-slate-800/70 hover:text-[#0284C7] dark:hover:text-sky-400'
                       }`}
                     >
                       <Icon
                         size={18}
                         className={`shrink-0 transition-colors ${
-                          active ? 'text-[#4F46E5]' : 'text-[#6B7280] group-hover:text-[#111827]'
+                          active ? 'text-[#0284C7] dark:text-sky-400' : 'text-[#64748B] dark:text-slate-400 group-hover:text-[#0284C7] dark:group-hover:text-sky-400'
                         }`}
                       />
                       {isOpen && (
                         <span className="flex-1 truncate">{item.label}</span>
                       )}
                       {isOpen && item.badge && (
-                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-[#4F46E5]">
+                        <span className="rounded-full bg-[#E0F2FE] dark:bg-sky-950 px-2 py-0.5 text-[10px] font-bold text-[#0284C7] dark:text-sky-400">
                           {item.badge}
                         </span>
-                      )}
-                      {active && (
-                        <motion.div
-                          layoutId="activeIndicator"
-                          className="absolute left-0 h-5 w-1 rounded-r-full bg-[#4F46E5]"
-                          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        />
                       )}
                     </Link>
                   )
@@ -261,66 +288,67 @@ export function Sidebar() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="mx-3 mb-2 rounded-2xl border border-indigo-200 bg-white p-3 shadow-xl space-y-2 z-50"
+              className="mx-3 mb-2 rounded-2xl border border-[#BAE6FD] dark:border-[#202F54] bg-white dark:bg-[#131E3A] p-3 shadow-2xl space-y-2 z-50 backdrop-blur-xl"
             >
-              <div className="flex items-center justify-between pb-1 border-b border-border text-xs font-semibold text-slate-700">
-                <span>Switch Demo Profile</span>
-                <span className="text-[10px] text-indigo-600 font-bold">1-Click</span>
+              <div className="flex items-center justify-between pb-1 border-b border-[#E2E8F0] dark:border-[#202F54] text-xs font-semibold text-[#475569] dark:text-slate-300">
+                <span>RBAC Simulation Personas</span>
+                {simulatedRole && (
+                  <button
+                    onClick={() => {
+                      resetSimulation()
+                      setShowRoleSwitcher(false)
+                    }}
+                    className="text-[10px] text-rose-500 font-bold hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => handleRoleSwitch('admin@example.com')}
-                className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-between text-xs"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">Milan Rathod</p>
-                  <p className="text-[10px] text-slate-500">Administrator (All Access)</p>
-                </div>
-                <Shield size={14} className="text-indigo-600" />
-              </button>
-              <button
-                onClick={() => handleRoleSwitch('andrew.fuller@northwind.com')}
-                className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-between text-xs"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">Andrew Fuller</p>
-                  <p className="text-[10px] text-slate-500">VP Sales & Operations</p>
-                </div>
-                <Users size={14} className="text-indigo-600" />
-              </button>
-              <button
-                onClick={() => handleRoleSwitch('nancy.davolio@northwind.com')}
-                className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-between text-xs"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">Nancy Davolio</p>
-                  <p className="text-[10px] text-slate-500">Sales Representative</p>
-                </div>
-                <UserCheck size={14} className="text-indigo-600" />
-              </button>
+              {PRESET_SIMULATED_ROLES.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => {
+                    setSimulatedRole(role)
+                    setShowRoleSwitcher(false)
+                  }}
+                  className="w-full text-left p-2 rounded-lg hover:bg-[#F0F7FF] dark:hover:bg-slate-800 transition-colors flex items-center justify-between text-xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{role.avatar}</span>
+                    <div>
+                      <p className="font-bold text-[#0F172A] dark:text-slate-100">{role.name}</p>
+                      <p className="text-[10px] text-[#64748B] dark:text-slate-400 truncate max-w-[140px]">{role.tagline}</p>
+                    </div>
+                  </div>
+                  {simulatedRole?.id === role.id && (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  )}
+                </button>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* User Footer Profile Card */}
-        <div className="shrink-0 border-t border-border p-3 bg-white">
-          <div className="flex items-center justify-between rounded-xl bg-[#F8FAFC] p-2 border border-border">
+        <div className="shrink-0 border-t border-[#E2E8F0] dark:border-[#202F54] p-3 bg-white dark:bg-[#0E1733] transition-colors">
+          <div className="flex items-center justify-between rounded-xl bg-[#F8FAFC] dark:bg-[#131E3A] p-2 border border-[#E2E8F0] dark:border-[#202F54]">
             <button
               onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-              className="flex flex-1 items-center gap-2.5 overflow-hidden text-left group"
-              title="Click to switch demo role"
+              className="flex flex-1 items-center gap-2.5 overflow-hidden text-left group cursor-pointer"
+              title="Click to switch simulated role"
             >
-              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-[#4F46E5] font-bold text-xs">
-                {user?.first_name ? user.first_name[0] : 'M'}
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#16A34A]" />
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0284C7] text-white font-bold text-xs">
+                {simulatedRole ? simulatedRole.avatar : (user?.first_name ? user.first_name[0] : 'M')}
+                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-800 ${simulatedRole ? 'bg-amber-500' : 'bg-emerald-500'}`} />
               </div>
               {isOpen && (
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="truncate text-xs font-semibold text-[#111827] group-hover:text-[#4F46E5] transition-colors flex items-center gap-1">
-                    {user ? `${user.first_name} ${user.last_name}` : 'Milan Rathod'}
-                    <ChevronDown size={12} className="text-slate-400" />
+                  <p className="truncate text-xs font-bold text-[#0F172A] dark:text-slate-100 group-hover:text-[#0284C7] dark:group-hover:text-sky-400 transition-colors flex items-center gap-1">
+                    {simulatedRole ? simulatedRole.name : (user ? `${user.first_name} ${user.last_name}` : 'Milan Rathod')}
+                    <ChevronDown size={12} className="text-[#64748B] dark:text-slate-400" />
                   </p>
-                  <p className="truncate text-[10px] text-[#6B7280]">
-                    {isAdmin ? 'System Admin' : 'Sales Representative'}
+                  <p className="truncate text-[10px] text-[#64748B] dark:text-slate-400 font-medium">
+                    {simulatedRole ? 'Simulated Persona' : (isSuperuser ? 'System Admin' : 'Workspace Member')}
                   </p>
                 </div>
               )}
@@ -330,7 +358,7 @@ export function Sidebar() {
               <button
                 onClick={logout}
                 title="Sign Out"
-                className="ml-1 rounded-lg p-1.5 text-[#6B7280] hover:bg-red-50 hover:text-[#DC2626] transition-colors cursor-pointer"
+                className="ml-1 rounded-lg p-1.5 text-[#64748B] dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 transition-colors cursor-pointer"
               >
                 <LogOut size={16} />
               </button>

@@ -151,7 +151,7 @@ export function AIInsightsWidget() {
         <div className="space-y-4">
           <h4 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Significant Workspace Trends</h4>
           <div className="grid gap-4 md:grid-cols-3">
-            {insights.trends.map((trend, i) => {
+            {insights.trends.map((trend: any, i: number) => {
               const styles = getTrendStyles(trend.type)
               const Icon = styles.icon
               const isExpanded = expandedTrend === i
@@ -219,7 +219,7 @@ export function AIInsightsWidget() {
             <h4 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Actionable Recommendations</h4>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {insights.recommendations.map((rec, i) => (
+            {insights.recommendations.map((rec: any, i: number) => (
               <div
                 key={i}
                 className="flex items-start gap-3 rounded-xl border border-border/30 bg-slate-900/40 p-4 hover:bg-slate-900/60 transition-colors"

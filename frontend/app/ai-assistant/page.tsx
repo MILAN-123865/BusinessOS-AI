@@ -16,9 +16,9 @@ import {
   FolderOpen,
   MessageSquare,
   ArrowRight,
-  ShieldAlert,
+  Database,
   Loader2,
-  CornerDownLeft,
+  Code2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -29,6 +29,7 @@ import {
   useDeleteAiSession,
 } from '@/hooks/useAi'
 import { useAuthStore } from '@/store/authStore'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 
 const QUICK_PROMPTS = [
   {
@@ -42,24 +43,24 @@ const QUICK_PROMPTS = [
     prompt: 'Give me a detailed breakdown of paid revenue, pending invoices, and net profit margin.',
   },
   {
+    icon: Database,
+    label: 'Top Clients by Revenue',
+    prompt: 'Show our client portfolio and enterprise accounts',
+  },
+  {
+    icon: Code2,
+    label: 'Run SQL Query',
+    prompt: 'SQL: SELECT company_name, city, country FROM clients LIMIT 5',
+  },
+  {
     icon: CheckCircle2,
     label: 'Inspect Active Tasks',
     prompt: 'Show all open tasks, bottlenecks, and high priority items across the workspace.',
   },
   {
-    icon: FolderOpen,
-    label: 'Project Portfolio',
-    prompt: 'What is the status of our project portfolio and budget allocations?',
-  },
-  {
-    icon: Users,
-    label: 'Team Directory Audit',
-    prompt: 'Summarize our active team structure, department count, and staffing.',
-  },
-  {
     icon: Zap,
     label: 'Create Action Item',
-    prompt: 'Create task: Schedule executive team sync for Friday with High priority',
+    prompt: 'Create task: Follow up with European distribution partners with High priority',
   },
 ]
 
@@ -124,112 +125,16 @@ export default function AiAssistantPage() {
     }
   }
 
-  // Format markdown helper (tables, code blocks, bold, headers)
-  const renderFormattedContent = (content: string) => {
-    const lines = content.split('\n')
-    const elements: React.ReactNode[] = []
-    let inTable = false
-    let tableRows: string[][] = []
-    let isHeader = true
-
-    const flushTable = () => {
-      if (tableRows.length > 0) {
-        elements.push(
-          <div key={`table-${elements.length}`} className="my-3 overflow-x-auto rounded-xl border border-border/60 shadow-xs">
-            <table className="w-full border-collapse text-left text-xs md:text-sm">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/50 font-semibold text-foreground">
-                  {tableRows[0].map((cell, idx) => (
-                    <th key={idx} className="px-3 py-2">
-                      {cell.trim()}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {tableRows.slice(1).map((row, rIdx) => (
-                  <tr key={rIdx} className="hover:bg-muted/20 transition-colors">
-                    {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="px-3 py-2">
-                        {cell.trim()}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-        tableRows = []
-        inTable = false
-      }
-    }
-
-    lines.forEach((line, idx) => {
-      const trimmed = line.trim()
-
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-        inTable = true
-        // Ignore markdown divider line | :--- | :--- |
-        if (trimmed.includes('---')) return
-        const cols = trimmed.slice(1, -1).split('|')
-        tableRows.push(cols)
-        return
-      } else if (inTable) {
-        flushTable()
-      }
-
-      if (trimmed.startsWith('### ')) {
-        elements.push(
-          <h3 key={idx} className="mt-3 mb-1.5 text-base font-bold text-foreground">
-            {trimmed.replace('### ', '')}
-          </h3>
-        )
-      } else if (trimmed.startsWith('#### ')) {
-        elements.push(
-          <h4 key={idx} className="mt-2 mb-1 text-sm font-semibold text-foreground">
-            {trimmed.replace('#### ', '')}
-          </h4>
-        )
-      } else if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
-        const text = trimmed.replace(/^[-•]\s*/, '')
-        elements.push(
-          <li key={idx} className="ml-4 list-disc text-xs md:text-sm leading-relaxed text-foreground/90">
-            <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(text) }} />
-          </li>
-        )
-      } else if (trimmed === '') {
-        elements.push(<div key={idx} className="h-1.5" />)
-      } else {
-        elements.push(
-          <p key={idx} className="text-xs md:text-sm leading-relaxed text-foreground/90">
-            <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
-          </p>
-        )
-      }
-    })
-
-    if (inTable) flushTable()
-    return elements
-  }
-
-  const formatInlineMarkdown = (text: string) => {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="italic text-foreground/80">$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-primary">$1</code>')
-  }
-
   return (
     <AppLayout>
       <div className="flex h-[calc(100vh-7.5rem)] w-full gap-4 overflow-hidden">
         {/* Left Sidebar: Session Management */}
-        <div className="hidden md:flex w-72 flex-col rounded-2xl border border-border/50 bg-card shadow-xs overflow-hidden">
+        <div className="hidden md:flex w-72 flex-col rounded-2xl border border-sky-100 dark:border-sky-900/60 bg-white dark:bg-[#0B132B] shadow-xs overflow-hidden">
           {/* New Chat Button */}
-          <div className="p-3 border-b border-border/50">
+          <div className="p-3 border-b border-sky-100 dark:border-sky-950">
             <button
               onClick={handleStartNewChat}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-3.5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-sky-700 transition-all cursor-pointer"
             >
               <Plus size={15} />
               <span>New Conversation</span>
@@ -238,15 +143,15 @@ export default function AiAssistantPage() {
 
           {/* Session History List */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
-            <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               Recent Sessions
             </div>
             {isLoadingSessions ? (
-              <div className="flex items-center justify-center p-6 text-muted-foreground">
+              <div className="flex items-center justify-center p-6 text-slate-400">
                 <Loader2 size={18} className="animate-spin" />
               </div>
             ) : sessions.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
+              <div className="p-4 text-center text-xs text-slate-400">
                 No conversations yet. Start a new chat!
               </div>
             ) : (
@@ -258,17 +163,17 @@ export default function AiAssistantPage() {
                     onClick={() => setSelectedSessionId(sess.id)}
                     className={`group flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-primary/10 font-medium text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'bg-sky-50 dark:bg-sky-950/60 font-medium text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-sky-50/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <MessageSquare size={13} className="shrink-0" />
+                      <MessageSquare size={13} className="shrink-0 text-sky-500" />
                       <span className="truncate">{sess.title}</span>
                     </div>
                     <button
                       onClick={(e) => handleDeleteSession(e, sess.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive rounded transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 rounded transition-opacity"
                       title="Delete chat"
                     >
                       <Trash2 size={12} />
@@ -280,25 +185,25 @@ export default function AiAssistantPage() {
           </div>
 
           {/* System Provider Badge */}
-          <div className="p-3 border-t border-border/50 bg-muted/30">
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <Sparkles size={13} className="text-primary" />
+          <div className="p-3 border-t border-sky-100 dark:border-sky-950 bg-sky-50/40 dark:bg-[#070D1E]">
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <Sparkles size={13} className="text-sky-600 dark:text-sky-400" />
               <span>Autonomous Copilot Engine</span>
             </div>
           </div>
         </div>
 
         {/* Main Conversation Window */}
-        <div className="flex flex-1 flex-col rounded-2xl border border-border/50 bg-card shadow-xs overflow-hidden">
+        <div className="flex flex-1 flex-col rounded-2xl border border-sky-100 dark:border-sky-900/60 bg-white dark:bg-[#0B132B] shadow-xs overflow-hidden">
           {/* Top Bar Header */}
-          <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 bg-card/60 backdrop-blur-sm">
+          <div className="flex items-center justify-between border-b border-sky-100 dark:border-sky-950 px-4 py-3 bg-white/70 dark:bg-[#0B132B]/80 backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-indigo-500 text-white shadow-xs">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-xs">
                 <Sparkles size={18} />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-foreground">BusinessOS AI Copilot</h2>
-                <p className="text-[11px] text-muted-foreground">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">BusinessOS AI Copilot</h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Real-time database intelligence & executive action engine
                 </p>
               </div>
@@ -307,12 +212,12 @@ export default function AiAssistantPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleStartNewChat}
-                className="md:hidden flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                className="md:hidden flex items-center gap-1 rounded-lg border border-sky-200 dark:border-sky-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200"
               >
                 <Plus size={13} />
                 <span>New</span>
               </button>
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600">
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Database Connected
               </div>
@@ -320,19 +225,19 @@ export default function AiAssistantPage() {
           </div>
 
           {/* Chat Messages Body */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/50 dark:bg-[#070D1E]">
             {/* If new chat without messages, display quick prompt starter cards */}
             {(!selectedSessionId || messages.length === 0) && !isLoadingMessages && (
               <div className="mx-auto max-w-2xl py-6 text-center space-y-6">
-                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-xs">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-300 shadow-xs border border-sky-200 dark:border-sky-800">
                   <Sparkles size={28} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     How can I assist your business today?
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-                    Ask questions across your entire company data, analyze financial cash flows, or direct me to perform workspace actions.
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                    Ask questions across your entire company data, analyze financial cash flows, run SQL queries, or direct me to perform workspace actions.
                   </p>
                 </div>
 
@@ -343,16 +248,16 @@ export default function AiAssistantPage() {
                       <button
                         key={idx}
                         onClick={() => handleSendMessage(qp.prompt)}
-                        className="group flex flex-col justify-between rounded-xl border border-border/60 bg-muted/30 p-3 hover:border-primary/50 hover:bg-primary/5 transition-all text-left cursor-pointer"
+                        className="group flex flex-col justify-between rounded-xl border border-sky-200/70 dark:border-sky-900/60 bg-white dark:bg-[#0F172A] p-3 hover:border-sky-400 hover:bg-sky-50/50 dark:hover:bg-sky-950/40 transition-all text-left cursor-pointer shadow-2xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-xs font-semibold text-foreground group-hover:text-primary">
-                            <Icon size={14} className="text-primary" />
+                          <span className="flex items-center gap-2 text-xs font-semibold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300">
+                            <Icon size={14} className="text-sky-500" />
                             {qp.label}
                           </span>
-                          <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                          <ArrowRight size={13} className="text-slate-400 group-hover:text-sky-600 transition-transform group-hover:translate-x-0.5" />
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2">
                           {qp.prompt}
                         </p>
                       </button>
@@ -365,7 +270,7 @@ export default function AiAssistantPage() {
             {/* Render conversation thread */}
             {isLoadingMessages && selectedSessionId ? (
               <div className="flex h-full items-center justify-center">
-                <Loader2 size={24} className="animate-spin text-primary" />
+                <Loader2 size={24} className="animate-spin text-sky-600" />
               </div>
             ) : (
               messages.map((msg) => {
@@ -380,25 +285,25 @@ export default function AiAssistantPage() {
                     <div
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${
                         isUser
-                          ? 'bg-primary text-primary-foreground shadow-xs'
-                          : 'bg-muted border border-border text-foreground'
+                          ? 'bg-sky-600 text-white shadow-xs'
+                          : 'bg-sky-100 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-300'
                       }`}
                     >
-                      {isUser ? <User size={15} /> : <Bot size={15} className="text-primary" />}
+                      {isUser ? <User size={15} /> : <Bot size={15} />}
                     </div>
 
                     <div
-                      className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-2xs ${
+                      className={`max-w-[88%] md:max-w-[80%] rounded-2xl px-4 py-3 shadow-xs ${
                         isUser
-                          ? 'bg-primary text-primary-foreground rounded-tr-xs'
-                          : 'bg-muted/40 border border-border/60 text-foreground rounded-tl-xs'
+                          ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-tr-xs font-medium'
+                          : 'bg-white dark:bg-[#0F172A] border border-sky-100 dark:border-sky-900/60 text-slate-900 dark:text-slate-100 rounded-tl-xs'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4 mb-1">
-                        <span className={`text-[10px] font-semibold ${isUser ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        <span className={`text-[10px] font-semibold ${isUser ? 'text-sky-100' : 'text-slate-400 dark:text-slate-500'}`}>
                           {isUser ? (user ? `${user.first_name} ${user.last_name}` : 'You') : 'BusinessOS Copilot'}
                         </span>
-                        <span className={`text-[10px] ${isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                        <span className={`text-[10px] ${isUser ? 'text-sky-200' : 'text-slate-400 dark:text-slate-500'}`}>
                           {msg.timestamp}
                         </span>
                       </div>
@@ -407,7 +312,7 @@ export default function AiAssistantPage() {
                         {isUser ? (
                           <p className="text-xs md:text-sm whitespace-pre-wrap">{msg.content}</p>
                         ) : (
-                          renderFormattedContent(msg.content)
+                          <MarkdownRenderer content={msg.content} />
                         )}
                       </div>
                     </div>
@@ -423,12 +328,12 @@ export default function AiAssistantPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-start gap-3"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted border border-border text-foreground">
-                  <Bot size={15} className="text-primary" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-300">
+                  <Bot size={15} />
                 </div>
-                <div className="rounded-2xl rounded-tl-xs bg-muted/40 border border-border/60 px-4 py-3">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 size={13} className="animate-spin text-primary" />
+                <div className="rounded-2xl rounded-tl-xs bg-white dark:bg-[#0F172A] border border-sky-100 dark:border-sky-900/60 px-4 py-3 shadow-xs">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <Loader2 size={13} className="animate-spin text-sky-600" />
                     <span>Querying live database & synthesizing insights...</span>
                   </div>
                 </div>
@@ -439,30 +344,30 @@ export default function AiAssistantPage() {
           </div>
 
           {/* Bottom Chat Input Form */}
-          <div className="p-3 md:p-4 border-t border-border/50 bg-card/60 backdrop-blur-sm">
-            <div className="relative flex items-center rounded-xl border border-border/70 bg-muted/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-card transition-all">
+          <div className="p-3 md:p-4 border-t border-sky-100 dark:border-sky-950 bg-white/80 dark:bg-[#0B132B]/80 backdrop-blur-sm">
+            <div className="relative flex items-center rounded-xl border border-sky-200 dark:border-sky-900 bg-slate-50 dark:bg-[#070D1E] focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:bg-white dark:focus-within:bg-[#0F172A] transition-all">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about employees, finances, tasks, or request an action..."
+                placeholder="Ask anything or enter 'SQL: SELECT...'..."
                 rows={1}
-                className="w-full resize-none bg-transparent px-3.5 py-3 text-xs md:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none max-h-32"
+                className="w-full resize-none bg-transparent px-3.5 py-3 text-xs md:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none max-h-32"
               />
               <div className="flex items-center gap-1.5 pr-2">
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || sendMutation.isPending}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-all cursor-pointer"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600 text-white disabled:opacity-40 hover:bg-sky-700 transition-all cursor-pointer shadow-xs"
                   title="Send message (Enter)"
                 >
                   <Send size={14} />
                 </button>
               </div>
             </div>
-            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-muted-foreground">
+            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-slate-400 dark:text-slate-500">
               <span>Press <kbd className="font-mono font-medium">Enter</kbd> to send, <kbd className="font-mono font-medium">Shift+Enter</kbd> for new line</span>
-              <span>Autonomous Tool Execution Active</span>
+              <span className="flex items-center gap-1"><Database size={10} /> Live Text-to-SQL Engine Active</span>
             </div>
           </div>
         </div>

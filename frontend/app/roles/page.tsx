@@ -48,16 +48,25 @@ export default function RolesPage() {
   const [roleName, setRoleName] = useState('')
   const [roleDesc, setRoleDesc] = useState('')
 
+  const isSuperuserEffective = useAuthStore((state) => state.isSuperuserEffective)
+  const isSuperuser = isSuperuserEffective()
+
   // Access Control: Only Superusers (Admins) can manage roles in this tenant space
-  if (user && !user.is_superuser) {
+  if (!isSuperuser) {
     return (
       <AppLayout>
         <div className="flex h-[70vh] flex-col items-center justify-center gap-4 text-center">
           <Lock size={64} className="text-destructive animate-pulse" />
           <h1 className="text-3xl font-bold tracking-tight">Access Control Warning</h1>
           <p className="max-w-md text-muted-foreground">
-            You do not possess the necessary policies (`roles.manage`) to access the tenant Role-Based Access Control configuration workstation.
+            Your current simulated persona does not possess the necessary policies (`roles.manage`) to access the tenant Role-Based Access Control configuration workstation.
           </p>
+          <a
+            href="/rbac-simulator"
+            className="mt-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 transition-colors"
+          >
+            Open RBAC Simulator to switch persona
+          </a>
         </div>
       </AppLayout>
     )

@@ -1,38 +1,40 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-// Initialize the Google Generative AI client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(req: Request) {
   try {
     const { message, history = [], systemInstruction, model = 'gemini-1.5-flash' } = await req.json()
+    const apiKey = process.env.GEMINI_API_KEY || ''
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured in .env.local' }, { status: 500 })
+    if (!apiKey) {
+      return NextResponse.json({
+        message: `BusinessOS AI: Hello! I received your query "${message}". Set GEMINI_API_KEY in your environment to activate live Gemini AI.`
+      })
     }
 
-    // Map UI mock models to actual Gemini models available in the SDK
     let realModel = 'gemini-1.5-flash'
     if (model.includes('pro')) realModel = 'gemini-1.5-pro'
 
-    const generativeModel = genAI.getGenerativeModel({
-      model: realModel,
-      systemInstruction: systemInstruction || undefined,
+    const contents = [
+      ...history.map((msg: any) => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ]
+
+    const body: any = { contents }
+    if (systemInstruction) {
+      body.systemInstruction = { parts: [{ text: systemInstruction }] }
+    }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${realModel}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     })
 
-    // Format history for Gemini SDK
-    const formattedHistory = history.map((msg: any) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }))
-
-    const chat = generativeModel.startChat({
-      history: formattedHistory,
-    })
-
-    const result = await chat.sendMessage(message)
-    const responseText = result.response.text()
+    const data = await response.json()
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || `Received: ${message}`
 
     return NextResponse.json({
       message: responseText

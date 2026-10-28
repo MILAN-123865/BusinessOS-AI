@@ -38,6 +38,18 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ExportDropdown } from '@/components/ui/export-dropdown'
+
+const CLIENT_EXPORT_COLUMNS = [
+  { header: 'Company Name', key: 'company_name' },
+  { header: 'Client Code', key: (c: any) => c.client_code || 'N/A' },
+  { header: 'Industry', key: (c: any) => c.industry || 'General' },
+  { header: 'City', key: (c: any) => c.city || 'N/A' },
+  { header: 'Country', key: (c: any) => c.country || 'Global' },
+  { header: 'Phone', key: (c: any) => c.phone || 'N/A' },
+  { header: 'Email', key: (c: any) => c.email || 'N/A' },
+  { header: 'Status', key: (c: any) => c.status || 'Active' },
+]
 
 const clientSchema = z.object({
   company_name: z.string().min(1, 'Company name is required').max(255),
@@ -273,33 +285,42 @@ export default function ClientsPage() {
             <p className="mt-2 text-muted-foreground">Manage organizational accounts, primary contact points, and leads pipeline.</p>
           </div>
           {!clientsLoading && !clientsError && (
-            <button
-              onClick={() => {
-                setIsClientOpen(true)
-                setEditingClient(null)
-                resetClient({
-                  company_name: '',
-                  client_code: '',
-                  industry: '',
-                  website: '',
-                  email: '',
-                  phone: '',
-                  status: 'Active',
-                  address: '',
-                  city: '',
-                  state: '',
-                  country: '',
-                  postal_code: '',
-                  tax_number: '',
-                  registration_number: '',
-                  notes: '',
-                })
-              }}
-              className="flex items-center gap-2 rounded-xl bg-primary/20 px-4 py-2.5 text-sm font-semibold text-accent hover:bg-primary/30 border border-accent/20 transition-all self-start"
-            >
-              <Plus size={16} />
-              <span>Add Client</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <ExportDropdown
+                filename="Northwind_Clients_Directory"
+                title="Client Accounts Directory"
+                subtitle="Northwind Enterprise CRM"
+                data={clients}
+                columns={CLIENT_EXPORT_COLUMNS}
+              />
+              <button
+                onClick={() => {
+                  setIsClientOpen(true)
+                  setEditingClient(null)
+                  resetClient({
+                    company_name: '',
+                    client_code: '',
+                    industry: '',
+                    website: '',
+                    email: '',
+                    phone: '',
+                    status: 'Active',
+                    address: '',
+                    city: '',
+                    state: '',
+                    country: '',
+                    postal_code: '',
+                    tax_number: '',
+                    registration_number: '',
+                    notes: '',
+                  })
+                }}
+                className="flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>Add Client</span>
+              </button>
+            </div>
           )}
         </div>
 

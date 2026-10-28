@@ -4,6 +4,7 @@ import './globals.css'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { AuthGuard } from '@/components/providers/auth-guard'
 import { PermissionProvider } from '@/components/providers/permission-provider'
+import { ThemeProvider } from '@/components/providers/theme-provider'
 
 export const metadata: Metadata = {
   title: 'BusinessOS AI',
@@ -12,16 +13,18 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/logos/logo-icon.png',
+        type: 'image/png',
       },
     ],
   },
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light',
-  themeColor: [{ color: '#FFFFFF' }],
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F0F7FF' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B132B' },
+  ],
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -33,15 +36,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" style={{ colorScheme: 'light' }}>
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans bg-background text-foreground antialiased selection:bg-primary/15 selection:text-primary">
-        <QueryProvider>
-          <PermissionProvider>
-            <AuthGuard>
-              {children}
-            </AuthGuard>
-          </PermissionProvider>
-        </QueryProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <QueryProvider>
+            <PermissionProvider>
+              <AuthGuard>
+                {children}
+              </AuthGuard>
+            </PermissionProvider>
+          </QueryProvider>
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
