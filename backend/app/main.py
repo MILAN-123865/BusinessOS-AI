@@ -29,6 +29,12 @@ from app.api.document import router as document_router
 from app.api.ai import router as ai_router
 from app.api.workflow import router as workflow_router
 from app.api.commerce import router as commerce_router
+from app.api.finance import router as finance_router
+from app.api.notification import router as notification_router
+from app.api.asset import router as asset_router
+from app.api.search import router as search_router
+from app.api.audit import router as audit_router
+from app.api.system_settings import router as settings_router
 
 # Setup structured logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -236,6 +242,36 @@ app.include_router(
 
 app.include_router(
     commerce_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    finance_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    notification_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    asset_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    search_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    audit_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    settings_router,
     prefix=settings.API_V1_PREFIX
 )
 

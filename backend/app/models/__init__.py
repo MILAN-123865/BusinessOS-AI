@@ -17,3 +17,4 @@ from app.models.finance import Invoice, Expense
 from app.models.performance import PerformanceReview
 from app.models.ai import AIChatSession, AIMessage
 from app.models.commerce import Product, Order, Inventory, AnalyticsData
+from app.models.asset import Asset, AssetCategory

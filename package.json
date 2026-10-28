@@ -6,7 +6,10 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node scripts/dev.js",
+    "dev:backend": "node scripts/dev.js --backend-only",
+    "dev:frontend": "node scripts/dev.js --frontend-only",
+    "dev:mock": "node scripts/archive/server.mock.js",
     "build": "cd frontend && npm run build",
     "lint": "cd frontend && npm run lint"
   },
