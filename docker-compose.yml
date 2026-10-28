@@ -34,7 +34,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/businessos
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET=super_secret_jwt_key_for_development_change_in_production
+      - JWT_SECRET_KEY=super_secret_jwt_key_for_development_change_in_production
+      - JWT_REFRESH_SECRET_KEY=super_secret_refresh_key_at_least_32_chars_prod
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       db:
@@ -54,7 +55,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules

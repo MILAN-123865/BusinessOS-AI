@@ -21,6 +21,7 @@ from app.services.ai.tools import (
     tool_query_clients,
     tool_query_orders,
     tool_query_products_inventory,
+    tool_search_knowledge_base,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,21 @@ TOOL_DEFINITIONS = [
             "name": "get_organization_overview",
             "description": "Get high-level organizational KPIs including active employees, projects, open tasks, total revenue, and net profit.",
             "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_base",
+            "description": "Search enterprise documents, ISO-27001 security policies, HR onboarding manuals, financial rules, SOPs, and operating procedures using semantic RAG.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query, topic, or question"},
+                    "category": {"type": "string", "description": "Optional category filter (e.g. 'Security & Compliance', 'HR & People', 'Finance', 'Operations')"}
+                },
+                "required": ["query"]
+            }
         }
     },
     {
@@ -198,6 +214,8 @@ async def execute_tool(name: str, args: Dict[str, Any], db: AsyncSession) -> Dic
             return {"team": await tool_query_team(db)}
         elif name == "create_task":
             return await tool_create_task(db, args.get("title", "New Task"), args.get("description"), args.get("priority", "Medium"))
+        elif name == "search_knowledge_base":
+            return {"knowledge_documents": await tool_search_knowledge_base(args.get("query", ""), args.get("category"))}
         else:
             return {"error": f"Unknown tool: {name}"}
     except Exception as e:

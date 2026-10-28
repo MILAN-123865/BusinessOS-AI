@@ -396,3 +396,11 @@ async def tool_create_task(db: AsyncSession, title: str, description: Optional[s
         "priority": new_task.priority,
         "message": f"Successfully created task '{new_task.title}' with priority '{new_task.priority}'."
     }
+
+
+async def tool_search_knowledge_base(query: str, category: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Search the enterprise knowledge base, SOPs, ISO-27001 policies, HR manuals, and guidelines using semantic RAG retrieval."""
+    from app.services.ai.rag_service import rag_service
+    results = rag_service.search(query=query, top_k=3, category=category)
+    return results
+

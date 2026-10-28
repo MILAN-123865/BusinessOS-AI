@@ -3,6 +3,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.future import select
@@ -226,3 +227,59 @@ async def send_ai_chat_message(
         },
         "errors": None
     }
+
+
+class RAGSearchRequest(BaseModel):
+    query: str
+    category: Optional[str] = None
+    top_k: int = 3
+
+
+class RAGIndexRequest(BaseModel):
+    id: str
+    title: str
+    category: str
+    content: str
+    summary: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+@router.post("/rag/search")
+async def rag_search_endpoint(
+    payload: RAGSearchRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Semantic RAG search over corporate documents & knowledge base."""
+    from app.services.ai.rag_service import rag_service
+    results = rag_service.search(query=payload.query, top_k=payload.top_k, category=payload.category)
+    return {
+        "success": True,
+        "data": {
+            "query": payload.query,
+            "results": results,
+            "total": len(results)
+        }
+    }
+
+
+@router.post("/rag/index")
+async def rag_index_endpoint(
+    payload: RAGIndexRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Index a new document into the enterprise knowledge base."""
+    from app.services.ai.rag_service import rag_service
+    doc = rag_service.add_document(
+        doc_id=payload.id,
+        title=payload.title,
+        category=payload.category,
+        content=payload.content,
+        summary=payload.summary or "",
+        tags=payload.tags or []
+    )
+    return {
+        "success": True,
+        "message": "Document successfully indexed in RAG knowledge base.",
+        "data": doc
+    }
+
